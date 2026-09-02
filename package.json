@@ -1,0 +1,62 @@
+{
+  "name": "cal-emre-xyz",
+  "version": "1.0.0",
+  "description": "Decentralized Nostr NIP-52 Calendar & Appointment System on Cloudflare Workers & React",
+  "author": "Emre Yılmaz <z@emre.xyz>",
+  "license": "MIT",
+  "homepage": "https://cal.emre.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/delirehberi/cal.emre.xyz.git"
+  },
+  "bugs": {
+    "url": "https://github.com/delirehberi/cal.emre.xyz/issues"
+  },
+  "keywords": [
+    "nostr",
+    "nip-52",
+    "nip-65",
+    "nip-07",
+    "nip-46",
+    "calendar",
+    "scheduling",
+    "appointment",
+    "cloudflare-workers",
+    "hono",
+    "react",
+    "tailwind"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "deploy": "vite build && wrangler deploy"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "hono": "^4.7.4",
+    "lucide-react": "^1.16.0",
+    "nostr-tools": "^2.10.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "resend": "^4.1.2",
+    "tailwind-merge": "^3.0.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250224.0",
+    "@tailwindcss/vite": "^4.0.9",
+    "@types/node": "^22.13.5",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.9",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0",
+    "vitest": "^3.0.7",
+    "wrangler": "^3.111.0"
+  }
+}

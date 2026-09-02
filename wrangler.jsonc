@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cal-emre-xyz",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "DEFAULT_HOST_NIP05": "delirehberi@emre.xyz",
+    "DEFAULT_HOST_PUBKEY": "46f3c7bb33cc3019049b76dc89dbb96e34c247bdda68b6ad8632682793ff8a1a",
+    "ENABLE_EMAIL_NOTIFICATIONS": "false",
+    "SUPPORT_EMAIL": "z@emre.xyz",
+    "ADMIN_EMAIL": "z@emre.xyz"
+  }
+}

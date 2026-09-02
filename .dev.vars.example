@@ -1,0 +1,7 @@
+# Local Wrangler dev environment variables (.dev.vars)
+ENABLE_EMAIL_NOTIFICATIONS=false
+RESEND_API_KEY=re_123456789_abcdefghijklmnopqrstuvwxyz
+DEFAULT_HOST_NIP05=delirehberi@emre.xyz
+DEFAULT_HOST_PUBKEY=46f3c7bb33cc3019049b76dc89dbb96e34c247bdda68b6ad8632682793ff8a1a
+SUPPORT_EMAIL=z@emre.xyz
+ADMIN_EMAIL=z@emre.xyz
