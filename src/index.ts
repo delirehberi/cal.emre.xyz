@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { APP_CONFIG } from './config';
 import { emailRouter } from './api/email';
 import { icsRouter } from './api/ics';
-import { nip05Router } from './api/nip05';
+import { nip05Router, nip05ProxyRouter } from './api/nip05';
 
 export interface Env {
   DEFAULT_HOST_NIP05?: string;
@@ -41,6 +41,7 @@ app.get('/api/health', (c) => {
 // Mount Sub-Routers
 app.route('/api/email', emailRouter);
 app.route('/api/events', icsRouter);
+app.route('/api/nip05', nip05ProxyRouter);
 app.route('/.well-known', nip05Router);
 
 // Global Error Handler

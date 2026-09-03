@@ -184,7 +184,12 @@ export function decodeNprofile(nprofile: string): { pubkey: string; relays?: str
  * Intelligently classifies and extracts Nostr identifiers (npub, nprofile, naddr, hex, NIP-05).
  */
 export function parseIdentifier(input: string): ParsedIdentifier {
-  const trimmed = input.trim();
+  let trimmed = input.trim();
+  try {
+    trimmed = decodeURIComponent(trimmed).trim();
+  } catch {
+    // Keep as is if decode fails
+  }
 
   if (isValidHexPubkey(trimmed)) {
     return {
@@ -255,12 +260,18 @@ import { hostDataCache } from './cache';
 
 /**
  * Resolves a NIP-05 identifier (e.g. delirehberi@emre.xyz or emre.xyz) to a public key and optional relays.
+ * Supports direct client lookup with automatic Edge proxy fallback if CORS or network restrictions occur.
  */
 export async function resolveNip05(
   identifier: string,
   forceRefresh = false
 ): Promise<{ pubkey: string; relays?: string[] } | null> {
-  const normalized = identifier.trim().toLowerCase();
+  let normalized = identifier.trim().toLowerCase();
+  try {
+    normalized = decodeURIComponent(normalized).trim().toLowerCase();
+  } catch {
+    // Keep normalized as is
+  }
 
   if (!forceRefresh) {
     const cached = hostDataCache.getCachedNip05(normalized);
@@ -269,26 +280,54 @@ export async function resolveNip05(
     }
   }
 
+  // 1. Primary path: Direct client-side NIP-05 lookup via nostr-tools
   try {
     const profile = await nip05.queryProfile(normalized);
-    if (profile && profile.pubkey) {
+    if (profile && profile.pubkey && isValidHexPubkey(profile.pubkey)) {
       const result = {
-        pubkey: profile.pubkey,
+        pubkey: profile.pubkey.toLowerCase(),
         relays: profile.relays,
       };
       hostDataCache.setCachedNip05(normalized, result);
       return result;
     }
   } catch {
-    // Network or CORS failure
+    // Network or CORS failure — proceed to Edge proxy fallback below
   }
 
+  // 2. Secondary fallback path: Server-side Edge Resolver (/api/nip05/resolve)
+  try {
+    const proxyUrl = `/api/nip05/resolve?identifier=${encodeURIComponent(normalized)}`;
+    const response = await fetch(proxyUrl, {
+      headers: { Accept: 'application/json' },
+    });
+
+    if (response.ok) {
+      const data = (await response.json()) as {
+        success?: boolean;
+        pubkey?: string;
+        relays?: string[];
+      };
+      if (data && data.success && data.pubkey && isValidHexPubkey(data.pubkey)) {
+        const result = {
+          pubkey: data.pubkey.toLowerCase(),
+          relays: data.relays,
+        };
+        hostDataCache.setCachedNip05(normalized, result);
+        return result;
+      }
+    }
+  } catch {
+    // Edge proxy unreachable or failed
+  }
+
+  // 3. Stale cache fallback if available
   const staleOrFallback = hostDataCache.getCachedNip05(normalized, true);
   if (staleOrFallback) {
     return staleOrFallback;
   }
 
-  // Built-in fallback for configured default host
+  // 4. Built-in fallback for configured default host
   if (
     normalized === APP_CONFIG.defaultHostNip05.toLowerCase() ||
     normalized === 'delirehberi' ||

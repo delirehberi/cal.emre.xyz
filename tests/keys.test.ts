@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   generateGuestKeyPair,
   isValidHexPubkey,
@@ -84,6 +84,41 @@ describe('keys.ts: Nostr Key & NIP-19 Operations', () => {
     expect(parseIdentifier(naddr)).toMatchObject({ type: 'naddr', pubkey: pubkeyHex, identifier: 'meet', kind: 31923 });
     expect(parseIdentifier('z@emre.xyz')).toMatchObject({ type: 'nip05', raw: 'z@emre.xyz' });
     expect(parseIdentifier('emre.xyz')).toMatchObject({ type: 'nip05', raw: 'emre.xyz' });
+    expect(parseIdentifier('fadim%40nostr.org.tr')).toMatchObject({ type: 'nip05', raw: 'fadim@nostr.org.tr' });
     expect(parseIdentifier('some-invalid-string')).toMatchObject({ type: 'unknown' });
+  });
+
+  it('resolves NIP-05 identifiers using edge proxy fallback when direct query fails', async () => {
+    const { resolveNip05 } = await import('../src/client/lib/nostr/keys');
+
+    const mockProxyResponse = {
+      success: true,
+      pubkey: '628b2c9aedcf9da47f42128402f3fd82787dac75c3595db1bccf3b7baab0452f',
+      relays: ['wss://relay.nostr.org.tr'],
+      name: 'fadim',
+      domain: 'nostr.org.tr',
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('.well-known/nostr.json')) {
+        // Simulate CORS browser failure
+        throw new TypeError('Failed to fetch (CORS Error)');
+      }
+      if (url.includes('/api/nip05/resolve')) {
+        return new Response(JSON.stringify(mockProxyResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response('Not found', { status: 404 });
+    });
+
+    const result = await resolveNip05('fadim@nostr.org.tr', true);
+    expect(result).not.toBeNull();
+    expect(result?.pubkey).toBe('628b2c9aedcf9da47f42128402f3fd82787dac75c3595db1bccf3b7baab0452f');
+    expect(result?.relays).toContain('wss://relay.nostr.org.tr');
+
+    fetchSpy.mockRestore();
   });
 });

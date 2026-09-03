@@ -36,7 +36,14 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
   const { t, locale } = useTranslation();
   const isTabletUp = useIsTabletUp();
 
-  const hostIdentifier = identifier || APP_CONFIG.defaultHostNip05;
+  const hostIdentifier = useMemo(() => {
+    const raw = identifier || APP_CONFIG.defaultHostNip05;
+    try {
+      return decodeURIComponent(raw).trim();
+    } catch {
+      return raw.trim();
+    }
+  }, [identifier]);
 
   // Resolve cached initial host data synchronously for instant 0ms hydration
   const initialData = useMemo(() => {

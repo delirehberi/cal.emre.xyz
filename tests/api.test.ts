@@ -328,4 +328,85 @@ describe('Phase 5: Cloudflare Worker API & Email Service', () => {
       vi.restoreAllMocks();
     });
   });
+
+  describe('Edge NIP-05 Proxy Resolver Endpoint (/api/nip05/resolve)', () => {
+    it('rejects requests with missing identifier/domain parameter with 400', async () => {
+      const res = await app.request('/api/nip05/resolve');
+      expect(res.status).toBe(400);
+      const json = await res.json() as Record<string, unknown>;
+      expect(json.success).toBe(false);
+      expect(json.error).toContain('Missing identifier');
+    });
+
+    it('rejects invalid or unsafe domain formats with 400', async () => {
+      const res = await app.request('/api/nip05/resolve?identifier=alice@localhost');
+      expect(res.status).toBe(400);
+      const json = await res.json() as Record<string, unknown>;
+      expect(json.success).toBe(false);
+      expect(json.error).toContain('Invalid or untrusted domain');
+    });
+
+    it('resolves valid third-party NIP-05 identifier with mock remote fetch', async () => {
+      const mockManifest = {
+        names: {
+          fadim: '628b2c9aedcf9da47f42128402f3fd82787dac75c3595db1bccf3b7baab0452f',
+        },
+        relays: {
+          '628b2c9aedcf9da47f42128402f3fd82787dac75c3595db1bccf3b7baab0452f': [
+            'wss://relay.nostr.org.tr',
+            'wss://relay.damus.io',
+          ],
+        },
+      };
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(mockManifest), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const res = await app.request('/api/nip05/resolve?identifier=fadim%40nostr.org.tr');
+      expect(res.status).toBe(200);
+
+      const json = await res.json() as {
+        success: boolean;
+        pubkey: string;
+        relays: string[];
+        name: string;
+        domain: string;
+      };
+
+      expect(json.success).toBe(true);
+      expect(json.pubkey).toBe('628b2c9aedcf9da47f42128402f3fd82787dac75c3595db1bccf3b7baab0452f');
+      expect(json.relays).toContain('wss://relay.nostr.org.tr');
+      expect(json.name).toBe('fadim');
+      expect(json.domain).toBe('nostr.org.tr');
+
+      fetchSpy.mockRestore();
+    });
+
+    it('returns 404 when name is not present in remote manifest', async () => {
+      const mockManifest = {
+        names: {
+          bob: '3bf0c63fcb93463407af97b5e0928885e819fa96a44bf43eac75537e87ba1473',
+        },
+      };
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(mockManifest), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const res = await app.request('/api/nip05/resolve?identifier=alice@nostr.org.tr');
+      expect(res.status).toBe(404);
+      const json = await res.json() as Record<string, unknown>;
+      expect(json.success).toBe(false);
+      expect(json.error).toContain('not found in remote NIP-05 manifest');
+
+      fetchSpy.mockRestore();
+    });
+  });
 });
