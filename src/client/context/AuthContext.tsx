@@ -11,6 +11,7 @@ import {
   decodeKeyToHex,
 } from '../lib/nostr/keys';
 import { nostrPool, type HostProfile } from '../lib/nostr/relays';
+import { APP_CONFIG } from '../../config';
 
 export interface AuthUser {
   pubkey: string;
@@ -60,6 +61,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch {
       // Profile fetch failure is non-fatal
+    }
+
+    if (pubkey.toLowerCase() === APP_CONFIG.defaultHostPubkey.toLowerCase()) {
+      if (!profile) {
+        profile = {
+          pubkey,
+          name: 'delirehberi',
+          displayName: 'delirehberi',
+          picture: APP_CONFIG.defaultHostPicture,
+          nip05: APP_CONFIG.defaultHostNip05,
+          about: APP_CONFIG.defaultHostBio.en,
+        };
+      } else if (!profile.picture) {
+        profile.picture = APP_CONFIG.defaultHostPicture;
+      }
     }
 
     const authUser: AuthUser = {

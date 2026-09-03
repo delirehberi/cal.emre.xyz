@@ -31,7 +31,7 @@ describe('HostDataCacheManager', () => {
       expect(masterProfile?.pubkey).toBe(APP_CONFIG.defaultHostPubkey);
       expect(masterProfile?.name).toBe('delirehberi');
       expect(masterProfile?.nip05).toBe(APP_CONFIG.defaultHostNip05);
-      expect(masterProfile?.picture).toBe('https://emre.xyz/delirehberi.png');
+      expect(masterProfile?.picture).toBe('https://emre.xyz/me.jpg');
       expect(masterProfile?.about).toContain('schedule a meeting');
     });
 

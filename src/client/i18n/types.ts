@@ -2,7 +2,7 @@
  * Internationalization (i18n) Type Definitions
  */
 
-export type Locale = 'en' | 'tr';
+export type Locale = 'en' | 'tr' | 'es';
 
 export interface TranslationDictionary {
   common: {

@@ -1,5 +1,7 @@
+import React from 'react';
+import { renderToString } from 'react-dom/server';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getInitialTheme, applyTheme } from '../src/client/context/ThemeContext';
+import { getInitialTheme, applyTheme, ThemeProvider, useTheme } from '../src/client/context/ThemeContext';
 
 describe('Theme Context & Helpers', () => {
   const originalLocalStorage = global.localStorage;
@@ -55,4 +57,25 @@ describe('Theme Context & Helpers', () => {
     expect(classes.has('dark')).toBe(false);
     expect(root.style.colorScheme).toBe('light');
   });
+
+  it('should render ThemeProvider without errors and expose context', () => {
+    const TestConsumer = () => {
+      const { theme } = useTheme();
+      return React.createElement('span', null, `theme:${theme}`);
+    };
+
+    const html = renderToString(
+      React.createElement(
+        ThemeProvider,
+        {
+          initialTheme: 'dark',
+          children: React.createElement(TestConsumer, null),
+        }
+      )
+    );
+
+    expect(html).toContain('theme:dark');
+  });
 });
+
+

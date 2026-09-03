@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import { Locale, TranslationDictionary } from './types';
 import { en } from './en';
 import { tr } from './tr';
+import { es } from './es';
 import { APP_CONFIG } from '../../config';
 
 const STORAGE_KEY = 'cal_locale';
@@ -17,6 +18,7 @@ export interface I18nContextType {
 const dictionaries: Record<Locale, TranslationDictionary> = {
   en,
   tr,
+  es,
 };
 
 export const getInitialLocale = (): Locale => {
@@ -29,7 +31,7 @@ export const getInitialLocale = (): Locale => {
           : null;
     if (storage) {
       const saved = storage.getItem(STORAGE_KEY);
-      if (saved === 'en' || saved === 'tr') {
+      if (saved === 'en' || saved === 'tr' || saved === 'es') {
         return saved;
       }
     }
@@ -37,6 +39,9 @@ export const getInitialLocale = (): Locale => {
       const browserLang = window.navigator.language.toLowerCase();
       if (browserLang.startsWith('tr')) {
         return 'tr';
+      }
+      if (browserLang.startsWith('es')) {
+        return 'es';
       }
     }
   } catch {
@@ -114,7 +119,9 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({ children, initialLoc
   const dict = useMemo(() => dictionaries[locale] || en, [locale]);
 
   const educationalUrl = useMemo(() => {
-    return locale === 'tr' ? APP_CONFIG.educationalLinks.tr : APP_CONFIG.educationalLinks.en;
+    if (locale === 'tr') return APP_CONFIG.educationalLinks.tr;
+    if (locale === 'es') return APP_CONFIG.educationalLinks.es;
+    return APP_CONFIG.educationalLinks.en;
   }, [locale]);
 
   const t = useMemo(

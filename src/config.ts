@@ -13,10 +13,11 @@ export const APP_CONFIG = {
   lightningAddress: 'delirehberi@emre.xyz',
   defaultHostNip05: 'delirehberi@emre.xyz',
   defaultHostPubkey: '46f3c7bb33cc3019049b76dc89dbb96e34c247bdda68b6ad8632682793ff8a1a',
-  defaultHostPicture: 'https://emre.xyz/delirehberi.png',
+  defaultHostPicture: 'https://emre.xyz/me.jpg',
   defaultHostBio: {
     en: 'You can schedule a meeting with me directly using this tool. Select your preferred duration and time slot below to book an appointment.',
     tr: 'Bu aracı kullanarak doğrudan benimle bir toplantı planlayabilirsiniz. Randevu oluşturmak için aşağıdan uygun süreyi ve saat aralığını seçin.',
+    es: 'Puedes programar una reunión conmigo directamente con esta herramienta. Selecciona tu duración y horario preferidos a continuación para reservar una cita.',
   },
   defaultRelays: [
     'wss://relay.emre.xyz',
@@ -39,6 +40,7 @@ export const APP_CONFIG = {
   educationalLinks: {
     en: 'https://nostr.com',
     tr: 'https://nostr.org.tr',
+    es: 'https://nostr.com',
   } as const,
 } as const;
 

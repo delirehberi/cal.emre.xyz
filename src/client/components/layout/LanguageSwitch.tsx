@@ -6,9 +6,10 @@ import type { Locale } from '../../i18n/types';
 const LOCALES: ReadonlyArray<{ code: Locale; label: string; name: string }> = [
   { code: 'en', label: 'EN', name: 'English' },
   { code: 'tr', label: 'TR', name: 'Türkçe' },
+  { code: 'es', label: 'ES', name: 'Español' },
 ];
 
-/** Segmented EN / TR control. Language names stay in their own language. */
+/** Segmented EN / TR / ES control. Language names stay in their own language. */
 export const LanguageSwitch: React.FC<{ className?: string }> = ({ className }) => {
   const { locale, setLocale, t } = useTranslation();
 

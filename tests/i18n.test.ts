@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { en, tr, resolveTranslation, getInitialLocale } from '../src/client/i18n';
+import { en, tr, es, resolveTranslation, getInitialLocale } from '../src/client/i18n';
 import { APP_CONFIG } from '../src/config';
 
 describe('i18n Dictionary Parity & Integrity', () => {
-  const compareKeys = (objA: Record<string, unknown>, objB: Record<string, unknown>, path = '') => {
+  const compareKeys = (objA: Record<string, unknown>, objB: Record<string, unknown>, langA = 'A', langB = 'B', path = '') => {
     const keysA = Object.keys(objA).sort();
     const keysB = Object.keys(objB).sort();
 
-    expect(keysA, `Keys at path "${path}" in EN should match TR`).toEqual(keysB);
+    expect(keysA, `Keys at path "${path}" in ${langA} should match ${langB}`).toEqual(keysB);
 
     for (const key of keysA) {
       const currentPath = path ? `${path}.${key}` : key;
@@ -17,17 +17,27 @@ describe('i18n Dictionary Parity & Integrity', () => {
       expect(typeof valA, `Type mismatch at path "${currentPath}"`).toBe(typeof valB);
 
       if (typeof valA === 'object' && valA !== null && typeof valB === 'object' && valB !== null) {
-        compareKeys(valA as Record<string, unknown>, valB as Record<string, unknown>, currentPath);
+        compareKeys(valA as Record<string, unknown>, valB as Record<string, unknown>, langA, langB, currentPath);
       } else {
         expect(typeof valA).toBe('string');
-        expect((valA as string).trim().length, `Empty string found at EN "${currentPath}"`).toBeGreaterThan(0);
-        expect((valB as string).trim().length, `Empty string found at TR "${currentPath}"`).toBeGreaterThan(0);
+        expect((valA as string).trim().length, `Empty string found at ${langA} "${currentPath}"`).toBeGreaterThan(0);
+        expect((valB as string).trim().length, `Empty string found at ${langB} "${currentPath}"`).toBeGreaterThan(0);
       }
     }
   };
 
   it('should have 100% key parity between English and Turkish dictionaries', () => {
-    compareKeys(en as unknown as Record<string, unknown>, tr as unknown as Record<string, unknown>);
+    compareKeys(en as unknown as Record<string, unknown>, tr as unknown as Record<string, unknown>, 'EN', 'TR');
+  });
+
+  it('should have 100% key parity between English and Spanish dictionaries', () => {
+    compareKeys(en as unknown as Record<string, unknown>, es as unknown as Record<string, unknown>, 'EN', 'ES');
+  });
+
+  it('should correctly resolve footer community initiative badge strings', () => {
+    expect(resolveTranslation(en, 'footer.nostrBadge')).toBe('A nostr.org.tr community initiative');
+    expect(resolveTranslation(tr, 'footer.nostrBadge')).toBe('Bir nostr.org.tr topluluk girişimidir');
+    expect(resolveTranslation(es, 'footer.nostrBadge')).toBe('Una iniciativa comunitaria de nostr.org.tr');
   });
 
   it('should correctly resolve nested translation keys', () => {
@@ -40,6 +50,8 @@ describe('i18n Dictionary Parity & Integrity', () => {
     expect(resolveTranslation(tr, 'header.logout')).toBe('Çıkış Yap');
     expect(resolveTranslation(tr, 'header.dashboard')).toBe('Yönetim Paneli');
     expect(resolveTranslation(tr, 'header.copyNpub')).toBe('npub’i kopyala');
+    expect(resolveTranslation(es, 'header.home')).toBe('Inicio');
+    expect(resolveTranslation(es, 'header.login')).toBe('Iniciar sesión');
   });
 
   it('should replace dynamic template interpolation parameters', () => {
@@ -52,6 +64,7 @@ describe('i18n Dictionary Parity & Integrity', () => {
       resolveTranslation(en, 'booking.form.selectedTime', { dayMonth: 'October 15', weekday: 'Thursday', start: '14:30', end: '15:00' })
     ).toBe('Thursday, October 15 · 14:30 – 15:00');
     expect(resolveTranslation(tr, 'booking.timeSlots.folded', { count: 11 })).toBe('11 saat dolu ya da geçmiş');
+    expect(resolveTranslation(es, 'booking.duration.minutes', { minutes: 30 })).toBe('30 min');
   });
 
   it('should return fallback key string if key path does not exist', () => {
@@ -70,10 +83,11 @@ describe('i18n Dictionary Parity & Integrity', () => {
   it('should route educational links to correct URLs', () => {
     expect(APP_CONFIG.educationalLinks.en).toBe('https://nostr.com');
     expect(APP_CONFIG.educationalLinks.tr).toBe('https://nostr.org.tr');
+    expect(APP_CONFIG.educationalLinks.es).toBe('https://nostr.com');
   });
 
   it('should default to "en" when window is not defined or no stored value', () => {
     const initial = getInitialLocale();
-    expect(['en', 'tr']).toContain(initial);
+    expect(['en', 'tr', 'es']).toContain(initial);
   });
 });
