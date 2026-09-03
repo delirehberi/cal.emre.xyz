@@ -10,6 +10,11 @@ export const APP_CONFIG = {
   adminEmail: 'z@emre.xyz',
   defaultHostNip05: 'delirehberi@emre.xyz',
   defaultHostPubkey: '46f3c7bb33cc3019049b76dc89dbb96e34c247bdda68b6ad8632682793ff8a1a',
+  defaultHostPicture: 'https://emre.xyz/delirehberi.png',
+  defaultHostBio: {
+    en: 'You can schedule a meeting with me directly using this tool. Select your preferred duration and time slot below to book an appointment.',
+    tr: 'Bu aracı kullanarak doğrudan benimle bir toplantı planlayabilirsiniz. Randevu oluşturmak için aşağıdan uygun süreyi ve saat aralığını seçin.',
+  },
   defaultRelays: [
     'wss://relay.emre.xyz',
     'wss://relay.nostr.band',

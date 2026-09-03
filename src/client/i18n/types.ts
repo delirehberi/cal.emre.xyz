@@ -40,6 +40,7 @@ export interface TranslationDictionary {
       verifiedBadge: string;
       timezone: string;
       viewProfile: string;
+      defaultBio: string;
     };
     durationPicker: {
       title: string;
@@ -169,6 +170,12 @@ export interface TranslationDictionary {
       updatingStatus: string;
       confirmCancelTitle: string;
       confirmCancelText: string;
+      encryptedBadge: string;
+      decryptedBadge: string;
+      decryptAction: string;
+      decrypting: string;
+      privateNotes: string;
+      attendeeEmail: string;
     };
   };
   footer: {

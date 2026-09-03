@@ -36,6 +36,7 @@ export const en: TranslationDictionary = {
       verifiedBadge: 'Verified NIP-05',
       timezone: 'Timezone',
       viewProfile: 'View Profile',
+      defaultBio: 'You can schedule a meeting with me directly using this tool. Select your preferred duration and time slot below to book an appointment.',
     },
     durationPicker: {
       title: 'Select Duration',
@@ -165,6 +166,12 @@ export const en: TranslationDictionary = {
       updatingStatus: 'Updating status on Nostr relays...',
       confirmCancelTitle: 'Cancel Appointment',
       confirmCancelText: 'Are you sure you want to cancel this appointment? A cancellation event will be published to relays.',
+      encryptedBadge: 'Encrypted Details',
+      decryptedBadge: 'Private & Decrypted',
+      decryptAction: 'Decrypt Notes',
+      decrypting: 'Decrypting with Nostr Signer...',
+      privateNotes: 'Meeting Notes (Encrypted for you)',
+      attendeeEmail: 'Attendee Email',
     },
   },
   footer: {

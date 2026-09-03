@@ -27,7 +27,14 @@ import {
   Trash2,
   Copy,
   Check,
+  Lock,
+  Mail,
 } from 'lucide-react';
+import {
+  decryptBookingDetails,
+  isLikelyEncrypted,
+  type EncryptedBookingPayload,
+} from '../../lib/nostr/encryption';
 
 export interface BookedEventsListProps {
   pubkey: string;
@@ -51,8 +58,36 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<HostAppointment | null>(null);
+  const [decryptedMap, setDecryptedMap] = useState<Record<string, EncryptedBookingPayload>>({});
+  const [decryptingIds, setDecryptingIds] = useState<Record<string, boolean>>({});
 
   const nowSeconds = Math.floor(Date.now() / 1000);
+
+  const decryptAppointment = useCallback(
+    async (appointment: HostAppointment) => {
+      const coord = appointment.event.coordinate;
+      if (!signer?.decrypt || !appointment.event.content || decryptedMap[coord] || decryptingIds[coord]) {
+        return;
+      }
+
+      setDecryptingIds((prev) => ({ ...prev, [coord]: true }));
+      try {
+        const attendee =
+          appointment.event.attendees.find((a) => a.pubkey !== pubkey) ||
+          appointment.event.attendees[0];
+        const senderPubkey = attendee?.pubkey || appointment.event.pubkey || pubkey;
+        const decrypted = await decryptBookingDetails(signer, senderPubkey, appointment.event.content);
+        if (decrypted) {
+          setDecryptedMap((prev) => ({ ...prev, [coord]: decrypted }));
+        }
+      } catch {
+        // Decryption failed or cancelled
+      } finally {
+        setDecryptingIds((prev) => ({ ...prev, [coord]: false }));
+      }
+    },
+    [signer, pubkey, decryptedMap, decryptingIds]
+  );
 
   const fetchAppointments = useCallback(async () => {
     if (!pubkey) return;
@@ -71,6 +106,16 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+
+  // Auto-decrypt appointments when list or signer changes
+  useEffect(() => {
+    if (!signer?.decrypt || appointments.length === 0) return;
+    appointments.forEach((apt) => {
+      if (apt.event.content && !decryptedMap[apt.event.coordinate]) {
+        decryptAppointment(apt);
+      }
+    });
+  }, [appointments, signer, decryptAppointment, decryptedMap]);
 
   // Separate upcoming and past appointments
   const upcomingAppointments = useMemo(() => {
@@ -334,6 +379,14 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
             const attendeeNpub = attendee?.pubkey ? encodeNpub(attendee.pubkey) : null;
             const isUrlLocation = event.location && /^https?:\/\//i.test(event.location);
 
+            const decrypted = decryptedMap[event.coordinate];
+            const hasEncryptedContent = isLikelyEncrypted(event.content);
+            const isDecrypting = decryptingIds[event.coordinate];
+
+            const displayTitle = decrypted?.name
+              ? `Appointment with ${decrypted.name}`
+              : event.title;
+
             return (
               <Card
                 key={event.coordinate}
@@ -341,18 +394,43 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
                   isDeleted ? 'opacity-60 bg-stone-50 dark:bg-stone-950/40' : ''
                 }`}
               >
-                {/* Top Row: Title & Status Badge */}
+                {/* Top Row: Title, Decryption Badge, & Status Badge */}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-base font-bold text-stone-900 dark:text-stone-100">
-                      {event.title}
-                    </h4>
-                    {event.description && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                        {displayTitle}
+                      </h4>
+                      {decrypted ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 px-2 py-0.5 rounded-md">
+                          <Lock className="h-3 w-3" />
+                          <span>{t('dashboard.appointments.decryptedBadge')}</span>
+                        </span>
+                      ) : hasEncryptedContent ? (
+                        <button
+                          type="button"
+                          onClick={() => decryptAppointment(appointment)}
+                          disabled={isDecrypting || !signer?.decrypt}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-600 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 px-2 py-0.5 rounded-md hover:text-stone-900 dark:hover:text-stone-100 cursor-pointer disabled:opacity-50"
+                        >
+                          <Lock className={`h-3 w-3 ${isDecrypting ? 'animate-spin' : ''}`} />
+                          <span>
+                            {isDecrypting
+                              ? t('dashboard.appointments.decrypting')
+                              : t('dashboard.appointments.decryptAction')}
+                          </span>
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {/* Unencrypted legacy description if present */}
+                    {event.description && !decrypted && (
                       <p className="text-xs text-stone-600 dark:text-stone-400 mt-1 max-w-2xl whitespace-pre-wrap">
                         {event.description}
                       </p>
                     )}
                   </div>
+
                   <div className="shrink-0">{getStatusBadge(effectiveStatus)}</div>
                 </div>
 
@@ -374,7 +452,7 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
                     <div className="flex items-center gap-2 truncate">
                       <User className="h-4 w-4 text-stone-400 shrink-0" />
                       <span className="font-mono text-[11px] truncate">
-                        {attendeeNpub.slice(0, 10)}...{attendeeNpub.slice(-4)}
+                        {decrypted?.name ? `${decrypted.name} (${attendeeNpub.slice(0, 8)}...)` : `${attendeeNpub.slice(0, 10)}...${attendeeNpub.slice(-4)}`}
                       </span>
                       <button
                         type="button"
@@ -391,6 +469,36 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* Decrypted Attendee Email & Notes */}
+                {decrypted && (decrypted.notes || decrypted.email) && (
+                  <div className="space-y-2 rounded-xl bg-stone-50/80 dark:bg-stone-900/60 p-3 border border-stone-200/80 dark:border-stone-800 text-xs">
+                    {decrypted.email && (
+                      <div className="flex items-center gap-1.5 text-stone-700 dark:text-stone-300">
+                        <Mail className="h-3.5 w-3.5 text-stone-400 shrink-0" />
+                        <span className="font-medium">{t('dashboard.appointments.attendeeEmail')}:</span>
+                        <a
+                          href={`mailto:${decrypted.email}`}
+                          className="font-mono text-stone-900 dark:text-stone-100 hover:underline"
+                        >
+                          {decrypted.email}
+                        </a>
+                      </div>
+                    )}
+
+                    {decrypted.notes && (
+                      <div className="space-y-1 pt-1 border-t border-stone-200/60 dark:border-stone-800/80">
+                        <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          <Lock className="h-3 w-3" />
+                          <span>{t('dashboard.appointments.privateNotes')}</span>
+                        </div>
+                        <p className="text-stone-700 dark:text-stone-300 whitespace-pre-wrap leading-relaxed">
+                          {decrypted.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Location / Meeting link */}
                 {event.location && (

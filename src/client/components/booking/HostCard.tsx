@@ -43,13 +43,33 @@ export const HostCard: React.FC<HostCardProps> = ({
 
   const displayNip05 = profile?.nip05 || nip05Identifier;
 
+  const pictureUrl = profile?.picture
+    ? profile.picture.startsWith('http://') ||
+      profile.picture.startsWith('https://') ||
+      profile.picture.startsWith('data:')
+      ? profile.picture
+      : `https://${profile.picture}`
+    : null;
+
+  const [imageError, setImageError] = React.useState(false);
+
+  // Use localized explanation if about matches default or is empty
+  const isDefaultBio =
+    !profile?.about ||
+    profile.about === 'Sovereign Nostr scheduling and appointments' ||
+    profile.about.includes('Schedule a meeting with me') ||
+    profile.about.includes('You can schedule a meeting');
+
+  const bioText = isDefaultBio ? t('booking.hostCard.defaultBio') : profile?.about;
+
   return (
     <Card className="space-y-4">
       <div className="flex items-start gap-4">
-        {profile?.picture ? (
+        {pictureUrl && !imageError ? (
           <img
-            src={profile.picture}
+            src={pictureUrl}
             alt={displayName}
+            onError={() => setImageError(true)}
             className="h-16 w-16 rounded-2xl object-cover border border-stone-200 dark:border-stone-800 shadow-xs"
           />
         ) : (
@@ -88,9 +108,9 @@ export const HostCard: React.FC<HostCardProps> = ({
         </div>
       </div>
 
-      {profile?.about && (
-        <p className="text-xs text-stone-600 dark:text-stone-400 line-clamp-3 leading-relaxed border-t border-stone-100 dark:border-stone-800/80 pt-3">
-          {profile.about}
+      {bioText && (
+        <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed border-t border-stone-100 dark:border-stone-800/80 pt-3">
+          {bioText}
         </p>
       )}
     </Card>

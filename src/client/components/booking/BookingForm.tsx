@@ -13,6 +13,7 @@ import { encodeNaddr } from '../../lib/nostr/keys';
 import { APP_CONFIG } from '../../../config';
 
 import { generateICS } from '../../lib/calendar/ics';
+import { encryptBookingDetails } from '../../lib/nostr/encryption';
 
 export interface BookingFormProps {
   hostPubkey: string;
@@ -87,14 +88,32 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       }
 
       const eventIdentifier = `booking-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      const eventTitle = `Appointment: ${hostDisplayName} & ${name.trim()}`;
+      const publicTitle = `Appointment (${selectedDuration} min)`;
+      const emailTitle = `Appointment: ${hostDisplayName} & ${name.trim()}`;
 
-      // 1. Construct Kind 31923 Time-Based Event Template
+      // Encrypt sensitive attendee details (name, meeting notes, contact email) for the host
+      let encryptedContent = '';
+      try {
+        encryptedContent = await encryptBookingDetails(activeSigner, hostPubkey, {
+          name: name.trim(),
+          notes: notes.trim() || undefined,
+          email: email.trim() || undefined,
+        });
+      } catch {
+        // Fallback to JSON payload if signer doesn't support encryption
+        encryptedContent = JSON.stringify({
+          name: name.trim(),
+          notes: notes.trim() || undefined,
+          email: email.trim() || undefined,
+        });
+      }
+
+      // 1. Construct Kind 31923 Time-Based Event Template with encrypted content
       const eventTemplate = createTimeCalendarEventTemplate({
         identifier: eventIdentifier,
-        title: eventTitle,
-        summary: `Appointment between ${hostDisplayName} and ${name.trim()} (${selectedDuration} min)`,
-        description: notes.trim() || undefined,
+        title: publicTitle,
+        summary: `Scheduled appointment (${selectedDuration} min)`,
+        content: encryptedContent,
         start: selectedSlot.start,
         end: selectedSlot.end,
         startTzid: hostTimezone,
@@ -126,7 +145,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
         try {
           const icsContent = generateICS({
             uid: `cal-${eventIdentifier}@cal.emre.xyz`,
-            title: eventTitle,
+            title: emailTitle,
             description: notes.trim() || undefined,
             location: 'Online Nostr Meeting',
             start: selectedSlot.start,
@@ -156,7 +175,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
               attendeeName: name.trim(),
               attendeePubkey,
               attendeeNsec: guestCredentials?.nsec,
-              eventTitle,
+              eventTitle: emailTitle,
               eventDescription: notes.trim() || undefined,
               startTime: selectedSlot.start,
               endTime: selectedSlot.end,
@@ -173,7 +192,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
 
       // 6. Complete flow
       onSuccess({
-        eventTitle,
+        eventTitle: emailTitle,
         start: selectedSlot.start,
         end: selectedSlot.end,
         formattedDate: selectedDate,

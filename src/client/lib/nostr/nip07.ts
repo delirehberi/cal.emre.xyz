@@ -89,4 +89,50 @@ export class Nip07Signer implements NostrSigner {
       throw new Error(`Signing failed or was cancelled in extension: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+
+  async encrypt(recipientPubkey: string, plaintext: string): Promise<string> {
+    const available = await this.isAvailable();
+    if (!available || !window.nostr) {
+      throw new Error('No NIP-07 extension detected.');
+    }
+
+    const targetPubkey = recipientPubkey.toLowerCase();
+
+    if (window.nostr.nip44?.encrypt) {
+      try {
+        return await window.nostr.nip44.encrypt(targetPubkey, plaintext);
+      } catch {
+        // Fallback to nip04 if nip44 fails
+      }
+    }
+
+    if (window.nostr.nip04?.encrypt) {
+      return await window.nostr.nip04.encrypt(targetPubkey, plaintext);
+    }
+
+    throw new Error('NIP-07 extension does not support encryption (nip44/nip04).');
+  }
+
+  async decrypt(senderPubkey: string, ciphertext: string): Promise<string> {
+    const available = await this.isAvailable();
+    if (!available || !window.nostr) {
+      throw new Error('No NIP-07 extension detected.');
+    }
+
+    const targetPubkey = senderPubkey.toLowerCase();
+
+    if (window.nostr.nip44?.decrypt) {
+      try {
+        return await window.nostr.nip44.decrypt(targetPubkey, ciphertext);
+      } catch {
+        // Fallback to nip04 if nip44 decrypt fails
+      }
+    }
+
+    if (window.nostr.nip04?.decrypt) {
+      return await window.nostr.nip04.decrypt(targetPubkey, ciphertext);
+    }
+
+    throw new Error('NIP-07 extension does not support decryption (nip44/nip04).');
+  }
 }

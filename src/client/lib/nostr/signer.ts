@@ -1,5 +1,5 @@
 import type { Event, EventTemplate } from 'nostr-tools';
-import { finalizeEvent, getPublicKey } from 'nostr-tools';
+import { finalizeEvent, getPublicKey, nip04, nip44 } from 'nostr-tools';
 import { hexToBytes, bytesToHex } from 'nostr-tools/utils';
 
 export type SignerType = 'nip07' | 'nip46' | 'privateKey';
@@ -8,6 +8,8 @@ export interface NostrSigner {
   type: SignerType;
   getPublicKey(): Promise<string>;
   signEvent(eventTemplate: EventTemplate): Promise<Event>;
+  encrypt?(recipientPubkey: string, plaintext: string): Promise<string>;
+  decrypt?(senderPubkey: string, ciphertext: string): Promise<string>;
 }
 
 /**
@@ -33,6 +35,24 @@ export class PrivateKeySigner implements NostrSigner {
 
   async signEvent(eventTemplate: EventTemplate): Promise<Event> {
     return finalizeEvent(eventTemplate, this.secretKey);
+  }
+
+  async encrypt(recipientPubkey: string, plaintext: string): Promise<string> {
+    try {
+      const key = nip44.getConversationKey(this.secretKey, recipientPubkey.toLowerCase());
+      return nip44.encrypt(plaintext, key);
+    } catch {
+      return nip04.encrypt(this.secretKey, recipientPubkey.toLowerCase(), plaintext);
+    }
+  }
+
+  async decrypt(senderPubkey: string, ciphertext: string): Promise<string> {
+    try {
+      const key = nip44.getConversationKey(this.secretKey, senderPubkey.toLowerCase());
+      return nip44.decrypt(ciphertext, key);
+    } catch {
+      return nip04.decrypt(this.secretKey, senderPubkey.toLowerCase(), ciphertext);
+    }
   }
 
   getSecretKeyHex(): string {

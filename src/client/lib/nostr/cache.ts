@@ -126,8 +126,9 @@ class HostDataCacheManager {
         pubkey: APP_CONFIG.defaultHostPubkey,
         name: 'delirehberi',
         displayName: 'delirehberi',
+        picture: APP_CONFIG.defaultHostPicture,
         nip05: APP_CONFIG.defaultHostNip05,
-        about: 'Sovereign Nostr scheduling and appointments',
+        about: APP_CONFIG.defaultHostBio.en,
       };
       return defaultProfile;
     }

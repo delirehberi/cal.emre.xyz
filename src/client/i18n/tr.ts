@@ -36,6 +36,7 @@ export const tr: TranslationDictionary = {
       verifiedBadge: 'Doğrulanmış NIP-05',
       timezone: 'Zaman Dilimi',
       viewProfile: 'Profili Görüntüle',
+      defaultBio: 'Bu aracı kullanarak doğrudan benimle bir toplantı planlayabilirsiniz. Randevu oluşturmak için aşağıdan uygun süreyi ve saat aralığını seçin.',
     },
     durationPicker: {
       title: 'Görüşme Süresi Seçin',
@@ -165,6 +166,12 @@ export const tr: TranslationDictionary = {
       updatingStatus: 'Nostr rölelerinde durum güncelleniyor...',
       confirmCancelTitle: 'Randevuyu İptal Et',
       confirmCancelText: 'Bu randevuyu iptal etmek istediğinize emin misiniz? İptal etkinliği rölelere yayınlanacaktır.',
+      encryptedBadge: 'Şifreli Bilgiler',
+      decryptedBadge: 'Gizli & Çözüldü',
+      decryptAction: 'Notları Çöz',
+      decrypting: 'Nostr İmzalayıcı ile çözülüyor...',
+      privateNotes: 'Toplantı Notları (Size Özel Şifreli)',
+      attendeeEmail: 'Katılımcı E-postası',
     },
   },
   footer: {

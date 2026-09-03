@@ -62,6 +62,26 @@ export class Nip46Signer implements NostrSigner {
     return await signer.signEvent(eventTemplate);
   }
 
+  async encrypt(recipientPubkey: string, plaintext: string): Promise<string> {
+    const signer = await this.getOrCreateBunkerSigner();
+    const targetPubkey = recipientPubkey.toLowerCase();
+    try {
+      return await signer.nip44Encrypt(targetPubkey, plaintext);
+    } catch {
+      return await signer.nip04Encrypt(targetPubkey, plaintext);
+    }
+  }
+
+  async decrypt(senderPubkey: string, ciphertext: string): Promise<string> {
+    const signer = await this.getOrCreateBunkerSigner();
+    const targetPubkey = senderPubkey.toLowerCase();
+    try {
+      return await signer.nip44Decrypt(targetPubkey, ciphertext);
+    } catch {
+      return await signer.nip04Decrypt(targetPubkey, ciphertext);
+    }
+  }
+
   async close(): Promise<void> {
     if (this.signerInstance) {
       await this.signerInstance.close();
