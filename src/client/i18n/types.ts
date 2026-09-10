@@ -132,6 +132,32 @@ export interface TranslationDictionary {
       bookAnother: string;
     };
   };
+  eventDetails: {
+    title: string;
+    notFound: string;
+    notFoundDesc: string;
+    hostedBy: string;
+    dateAndTime: string;
+    coHosts: string;
+    attendees: string;
+    agenda: string;
+    privateNotice: string;
+    rsvpGoing: string;
+    rsvpMaybe: string;
+    rsvpNotGoing: string;
+    rsvpSubmitted: string;
+    copyInviteLink: string;
+    inviteCopied: string;
+    downloadCalendar: string;
+    shareWithOthers: string;
+    publicBadge: string;
+    privateBadge: string;
+    decryptedBadge: string;
+    participants: string;
+    roleHost: string;
+    roleAttendee: string;
+    yourResponse: string;
+  };
   auth: {
     loginModalTitle: string;
     loginModalSubtitle: string;
@@ -269,6 +295,10 @@ export interface TranslationDictionary {
       keepMeeting: string;
       privateNotes: string;
       attendeeEmail: string;
+      filtersLabel: string;
+      filterAll: string;
+      filterHosted: string;
+      filterAttending: string;
     };
   };
   about: {

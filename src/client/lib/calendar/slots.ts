@@ -198,8 +198,10 @@ export interface BusyInterval {
 export interface DailySlotsParams {
   /** Selected date formatted as 'YYYY-MM-DD' or a Date object */
   date: string | Date;
-  /** Meeting duration in minutes (e.g. 15, 30, 60) */
+  /** Meeting duration in minutes (e.g. 15, 30, 60, up to 360) */
   durationMinutes: number;
+  /** Optional step interval between slot starts in minutes (defaults to durationMinutes) */
+  stepMinutes?: number;
   /** Host working hours configuration */
   workingHours: WorkingHoursConfig;
   /** List of busy intervals from host's Kind 31923 events and accepted Kind 31925 RSVPs */
@@ -437,6 +439,26 @@ export function isSlotColliding(
 }
 
 /**
+ * Formats a duration in minutes to a localized, friendly string (e.g. "30 min", "1 hr", "2.5 hrs", "6 hrs").
+ */
+export function formatDuration(minutes: number, locale: string = 'en'): string {
+  if (minutes < 60) {
+    if (locale === 'tr') return `${minutes} dk`;
+    if (locale === 'es') return `${minutes} min`;
+    return `${minutes} min`;
+  }
+  const hours = minutes / 60;
+  if (Number.isInteger(hours)) {
+    if (locale === 'tr') return `${hours} saat`;
+    if (locale === 'es') return `${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    return `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
+  }
+  if (locale === 'tr') return `${hours} saat`;
+  if (locale === 'es') return `${hours} horas`;
+  return `${hours} hrs`;
+}
+
+/**
  * Formats a Unix timestamp in seconds to a human-readable 24-hour time string (e.g. "09:30" or "14:00")
  * in a specified timezone.
  */
@@ -468,6 +490,7 @@ export function generateDailyTimeSlots(params: DailySlotsParams): TimeSlot[] {
   const {
     date,
     durationMinutes,
+    stepMinutes,
     workingHours,
     busyIntervals = [],
     attendeeTimezone = workingHours.timezone || 'UTC',
@@ -495,7 +518,9 @@ export function generateDailyTimeSlots(params: DailySlotsParams): TimeSlot[] {
   const minLeadTimeSeconds = minLeadTimeMinutes * 60;
   const effectiveCutoffTime = currentTimestamp + minLeadTimeSeconds;
 
-  for (let offsetMinutes = 0; offsetMinutes + durationMinutes <= totalWorkingMinutes; offsetMinutes += durationMinutes) {
+  const step = stepMinutes && stepMinutes > 0 ? stepMinutes : durationMinutes;
+
+  for (let offsetMinutes = 0; offsetMinutes + durationMinutes <= totalWorkingMinutes; offsetMinutes += step) {
     const slotStartMinuteOfDay = dayHours.start + offsetMinutes;
     const slotStartHour = Math.floor(slotStartMinuteOfDay / 60);
     const slotStartMinute = slotStartMinuteOfDay % 60;

@@ -11,6 +11,7 @@ import {
   encodeNprofile,
   decodeNprofile,
   parseIdentifier,
+  resolveParticipantKey,
 } from '../src/client/lib/nostr/keys';
 
 describe('keys.ts: Nostr Key & NIP-19 Operations', () => {
@@ -120,5 +121,30 @@ describe('keys.ts: Nostr Key & NIP-19 Operations', () => {
     expect(result?.relays).toContain('wss://relay.nostr.org.tr');
 
     fetchSpy.mockRestore();
+  });
+
+  describe('resolveParticipantKey', () => {
+    const pubkeyHex = '3bf0c63fcb93463407af97b5e0928885e819fa96a44bf43eac75537e87ba1473';
+
+    it('resolves valid hex pubkey directly', async () => {
+      const res = await resolveParticipantKey(pubkeyHex);
+      expect(res).not.toBeNull();
+      expect(res?.pubkey).toBe(pubkeyHex);
+      expect(res?.npub).toBe(encodeNpub(pubkeyHex));
+    });
+
+    it('resolves valid npub format directly', async () => {
+      const npub = encodeNpub(pubkeyHex);
+      const res = await resolveParticipantKey(npub);
+      expect(res).not.toBeNull();
+      expect(res?.pubkey).toBe(pubkeyHex);
+      expect(res?.npub).toBe(npub);
+    });
+
+    it('rejects on invalid garbage input', async () => {
+      await expect(resolveParticipantKey('not-a-valid-identifier-xyz')).rejects.toThrow(
+        'Could not resolve participant identifier'
+      );
+    });
   });
 });

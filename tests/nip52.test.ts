@@ -7,6 +7,7 @@ import {
   parseDateCalendarEvent,
   createCalendarRSVPTemplate,
   parseCalendarRSVP,
+  updateTimeCalendarEventAttendees,
 } from '../src/client/lib/nostr/nip52';
 
 describe('nip52.ts: NIP-52 Calendar Events Operations', () => {
@@ -71,6 +72,78 @@ describe('nip52.ts: NIP-52 Calendar Events Operations', () => {
       expect(parsed.coordinate).toBe(`31923:${mockPubkey}:intro-call`);
       expect(parsed.attendees).toHaveLength(1);
       expect(parsed.attendees[0].role).toBe('attendee');
+    });
+
+    it('supports private and public visibility tags', () => {
+      const privateTemplate = createTimeCalendarEventTemplate({
+        identifier: 'private-meeting',
+        title: 'Secret Session',
+        start: 1725285600,
+        end: 1725287400,
+        visibility: 'private',
+      });
+      expect(privateTemplate.tags).toContainEqual(['visibility', 'private']);
+
+      const publicTemplate = createTimeCalendarEventTemplate({
+        identifier: 'public-meeting',
+        title: 'Public AMA',
+        start: 1725285600,
+        end: 1725287400,
+        visibility: 'public',
+      });
+      expect(publicTemplate.tags).toContainEqual(['visibility', 'public']);
+
+      const mockEvent: Event = {
+        id: 'event-priv',
+        pubkey: mockPubkey,
+        created_at: 1725280000,
+        kind: 31923,
+        tags: [
+          ['d', 'private-meeting'],
+          ['title', 'Secret Session'],
+          ['start', '1725285600'],
+          ['end', '1725287400'],
+          ['visibility', 'private'],
+        ],
+        content: '',
+        sig: 'sig-priv',
+      };
+      const parsed = parseTimeCalendarEvent(mockEvent);
+      expect(parsed.visibility).toBe('private');
+    });
+
+    it('updates event attendees without duplicating existing ones', () => {
+      const originalEvent: Event = {
+        id: 'event-orig',
+        pubkey: mockPubkey,
+        created_at: 1725280000,
+        kind: 31923,
+        tags: [
+          ['d', 'team-sync'],
+          ['title', 'Team Sync'],
+          ['start', '1725285600'],
+          ['end', '1725287400'],
+          ['p', mockPubkey, '', 'host'],
+        ],
+        content: 'Sync notes',
+        sig: 'sig-orig',
+      };
+
+      const newAttendees = [
+        { pubkey: mockPubkey, role: 'host' as const }, // duplicate, should not be re-added
+        { pubkey: '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798', role: 'attendee' as const },
+        { pubkey: '628b2c9aedcf9da47f42128402f3fd82787dac75c3595db1bccf3b7baab0452f', role: 'host' as const },
+      ];
+
+      const updatedTemplate = updateTimeCalendarEventAttendees(parseTimeCalendarEvent(originalEvent), newAttendees);
+      expect(updatedTemplate.kind).toBe(31923);
+      expect(updatedTemplate.content).toBe('Sync notes');
+
+      const pTags = updatedTemplate.tags.filter((t) => t[0] === 'p');
+      expect(pTags).toHaveLength(3);
+      expect(pTags).toContainEqual(['p', mockPubkey, '', 'host']);
+      expect(pTags).toContainEqual(['p', '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798', '', 'attendee']);
+      expect(pTags).toContainEqual(['p', '628b2c9aedcf9da47f42128402f3fd82787dac75c3595db1bccf3b7baab0452f', '', 'host']);
     });
   });
 

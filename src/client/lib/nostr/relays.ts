@@ -38,6 +38,9 @@ export interface HostAppointment {
   hostRsvp?: CalendarRSVP;
   isDeleted: boolean;
   effectiveStatus: 'accepted' | 'tentative' | 'declined' | 'canceled';
+  hostPubkey: string;
+  guestPubkey?: string;
+  isHost: boolean;
 }
 
 class RelayPoolManager {
@@ -317,7 +320,16 @@ class RelayPoolManager {
       // Sort RSVPs descending by created_at to get latest
       eventRsvps.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
 
-      const hostRsvp = eventRsvps.find((r) => r.pubkey === pubkey);
+      const hostAttendee = event.attendees.find((a) => a.role === 'host');
+      const guestAttendee = event.attendees.find((a) => a.role === 'attendee');
+
+      // The true host of the scheduled appointment
+      const hostPubkey = hostAttendee?.pubkey || (event.pubkey ? event.pubkey : pubkey);
+      const guestPubkey = guestAttendee?.pubkey || (event.pubkey !== hostPubkey ? event.pubkey : event.attendees.find((a) => a.pubkey !== hostPubkey)?.pubkey);
+      const isHost = pubkey.toLowerCase() === hostPubkey.toLowerCase();
+
+      // Find the RSVP signed by the actual Host
+      const hostRsvp = eventRsvps.find((r) => r.pubkey && r.pubkey.toLowerCase() === hostPubkey.toLowerCase());
       const isDeleted = (event.id && deletedIds.has(event.id)) || deletedCoordinates.has(event.coordinate) || false;
 
       let effectiveStatus: HostAppointment['effectiveStatus'] = 'tentative';
@@ -325,9 +337,12 @@ class RelayPoolManager {
         effectiveStatus = 'canceled';
       } else if (hostRsvp) {
         effectiveStatus = hostRsvp.status;
+      } else if (event.pubkey && event.pubkey.toLowerCase() === hostPubkey.toLowerCase()) {
+        // If the Host authored the event directly, it is considered accepted by the host
+        effectiveStatus = 'accepted';
       } else {
-        // Default to accepted if host authored the event directly
-        effectiveStatus = event.pubkey === pubkey ? 'accepted' : 'tentative';
+        // If a guest created the reservation and host hasn't RSVP'd yet, it is pending/tentative
+        effectiveStatus = 'tentative';
       }
 
       return {
@@ -336,6 +351,9 @@ class RelayPoolManager {
         hostRsvp,
         isDeleted,
         effectiveStatus,
+        hostPubkey,
+        guestPubkey,
+        isHost,
       };
     });
 

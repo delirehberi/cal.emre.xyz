@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
 
 /** Hash routes that are pages of the app, not host identifiers. */
-export const RESERVED_ROUTES = ['about', 'dashboard'] as const;
+export const RESERVED_ROUTES = ['about', 'dashboard', 'e'] as const;
 
 export type Route =
   | { name: 'booking'; identifier?: string }
   | { name: 'about' }
-  | { name: 'dashboard' };
+  | { name: 'dashboard' }
+  | { name: 'event'; naddr: string };
+
+const decodeSegment = (segment: string): string => {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+};
 
 /**
  * Parses a router path (the part after `#`, e.g. `/delirehberi@emre.xyz`) into a route.
@@ -16,6 +25,7 @@ export type Route =
 export const parseRoute = (path: string): Route => {
   const segment = path.replace(/^\/+/, '').split('/')[0].split('?')[0];
   if (!segment) return { name: 'booking' };
+  const naddrSegment = path.replace(/^\/+/, '').split('/')[1]?.split('?')[0];
 
   let decoded = segment;
   try {
@@ -27,8 +37,12 @@ export const parseRoute = (path: string): Route => {
   const lower = decoded.toLowerCase();
   if (lower === 'about') return { name: 'about' };
   if (lower === 'dashboard') return { name: 'dashboard' };
+  if (lower === 'e' && naddrSegment) return { name: 'event', naddr: decodeSegment(naddrSegment) };
   return { name: 'booking', identifier: decoded };
 };
+
+/** Builds the hash link for an event page (`#/e/<naddr>`). */
+export const eventHref = (naddr: string): string => `#/e/${encodeURIComponent(naddr)}`;
 
 /** Builds the hash link for a host identifier (NIP-05 or npub). */
 export const hostHref = (identifier?: string): string =>

@@ -28,6 +28,7 @@ export interface TimeCalendarEvent {
   attendees: CalendarAttendee[];
   content: string;
   coordinate: string; // 31923:<pubkey>:<d-tag>
+  visibility?: 'public' | 'private';
 }
 
 export interface DateCalendarEvent {
@@ -90,6 +91,7 @@ export function createTimeCalendarEventTemplate(params: {
   content?: string;
   /** Additional tags appended as they are (e.g. encrypted copies for invitees). */
   extraTags?: string[][];
+  visibility?: 'public' | 'private';
 }): EventTemplate {
   if (!params.identifier.trim()) {
     throw new Error('Time calendar event must have a valid identifier (d-tag)');
@@ -127,6 +129,9 @@ export function createTimeCalendarEventTemplate(params: {
   }
   if (params.geohash) {
     tags.push(['g', params.geohash]);
+  }
+  if (params.visibility) {
+    tags.push(['visibility', params.visibility]);
   }
 
   if (params.hashtags) {
@@ -182,6 +187,7 @@ export function parseTimeCalendarEvent(event: Event): TimeCalendarEvent {
   let description: string | undefined;
   let location: string | undefined;
   let geohash: string | undefined;
+  let visibility: 'public' | 'private' | undefined;
   const hashtags: string[] = [];
   const attendees: CalendarAttendee[] = [];
 
@@ -217,6 +223,11 @@ export function parseTimeCalendarEvent(event: Event): TimeCalendarEvent {
         break;
       case 'g':
         geohash = val1;
+        break;
+      case 'visibility':
+        if (val1 === 'public' || val1 === 'private') {
+          visibility = val1;
+        }
         break;
       case 't':
         if (val1) hashtags.push(val1);
@@ -263,7 +274,33 @@ export function parseTimeCalendarEvent(event: Event): TimeCalendarEvent {
     attendees,
     content: event.content,
     coordinate,
+    visibility,
   };
+}
+
+/**
+ * Creates an updated Kind 31923 event template with a new attendee list, preserving existing metadata.
+ */
+export function updateTimeCalendarEventAttendees(
+  originalEvent: TimeCalendarEvent,
+  newAttendees: CalendarAttendee[]
+): EventTemplate {
+  return createTimeCalendarEventTemplate({
+    identifier: originalEvent.identifier,
+    title: originalEvent.title,
+    start: originalEvent.start,
+    end: originalEvent.end,
+    startTzid: originalEvent.startTzid,
+    endTzid: originalEvent.endTzid,
+    summary: originalEvent.summary,
+    description: originalEvent.description,
+    location: originalEvent.location,
+    geohash: originalEvent.geohash,
+    hashtags: originalEvent.hashtags,
+    attendees: newAttendees,
+    content: originalEvent.content,
+    visibility: originalEvent.visibility,
+  });
 }
 
 /**

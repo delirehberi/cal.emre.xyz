@@ -30,6 +30,8 @@ export const APP_CONFIG = {
   allowedDurationsMinutes: [15, 30, 45, 60] as const,
   /** Offered behind the "longer…" chip on the booking page. */
   extendedDurationsMinutes: [90, 120] as const,
+  /** Only a host can switch these on, in the dashboard's meeting lengths. */
+  longDurationsMinutes: [180, 240, 360] as const,
   defaultDurationMinutes: 30,
   defaultWorkingHours: {
     startHour: 9,

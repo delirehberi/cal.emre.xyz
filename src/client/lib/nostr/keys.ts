@@ -367,3 +367,49 @@ export function decodeKeyToHex(input: string): string {
   throw new Error(`Invalid key format: ${input}`);
 }
 
+/**
+ * Resolves an input string (npub, hex pubkey, or NIP-05 address) to a validated hex pubkey and npub.
+ */
+export async function resolveParticipantKey(
+  input: string
+): Promise<{ pubkey: string; npub: string; identifier: string }> {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    throw new Error('Participant key or identifier cannot be empty.');
+  }
+
+  // 1. Check if hex pubkey
+  if (isValidHexPubkey(trimmed)) {
+    const pubkey = trimmed.toLowerCase();
+    return {
+      pubkey,
+      npub: encodeNpub(pubkey),
+      identifier: `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}`,
+    };
+  }
+
+  // 2. Check if npub
+  if (trimmed.startsWith('npub1')) {
+    const pubkey = decodeNpub(trimmed);
+    return {
+      pubkey,
+      npub: trimmed,
+      identifier: `${trimmed.slice(0, 10)}...${trimmed.slice(-4)}`,
+    };
+  }
+
+  // 3. Check if NIP-05 address
+  if (trimmed.includes('@') || trimmed.includes('.')) {
+    const res = await resolveNip05(trimmed);
+    if (res?.pubkey) {
+      return {
+        pubkey: res.pubkey,
+        npub: encodeNpub(res.pubkey),
+        identifier: trimmed,
+      };
+    }
+  }
+
+  throw new Error(`Could not resolve participant identifier: "${input}"`);
+}
+

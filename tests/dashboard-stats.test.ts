@@ -25,6 +25,8 @@ const appointment = (
   rsvps: [],
   isDeleted: false,
   effectiveStatus: 'accepted',
+  hostPubkey: 'pk',
+  isHost: true,
   ...overrides,
 });
 

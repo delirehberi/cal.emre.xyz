@@ -7,6 +7,7 @@ import { Footer } from './components/layout/Footer';
 import { BookingPage } from './pages/BookingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AboutPage } from './pages/AboutPage';
+import { EventDetailsPage } from './pages/EventDetailsPage';
 import { APP_CONFIG } from '../config';
 import { parseRoute, useHashPath } from './lib/router';
 
@@ -20,6 +21,8 @@ export const MainLayout: React.FC = () => {
       <main className="flex-1">
         {route.name === 'dashboard' ? (
           <DashboardPage />
+        ) : route.name === 'event' ? (
+          <EventDetailsPage naddr={route.naddr} />
         ) : route.name === 'about' ? (
           <AboutPage />
         ) : (

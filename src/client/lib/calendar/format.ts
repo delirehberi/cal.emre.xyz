@@ -1,8 +1,8 @@
 /** Display helpers for the booking page. Date keys are 'YYYY-MM-DD' in the host's calendar. */
 
-export type DisplayLocale = 'en' | 'tr';
+export type DisplayLocale = 'en' | 'tr' | 'es';
 
-const INTL_LOCALE: Record<DisplayLocale, string> = { en: 'en-US', tr: 'tr-TR' };
+const INTL_LOCALE: Record<DisplayLocale, string> = { en: 'en-US', tr: 'tr-TR', es: 'es-ES' };
 
 /** Short GMT offset of a time zone at a moment, e.g. "GMT+3", "GMT-5", "GMT+5:30"; "GMT" for UTC. */
 export function getTimezoneOffsetLabel(timeZone: string, atMs: number = Date.now()): string {

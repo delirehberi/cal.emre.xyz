@@ -92,7 +92,12 @@ export const WorkingHoursForm: React.FC<WorkingHoursFormProps> = ({ pubkey, sign
   };
 
   const offeredDurations = config.durations ?? [...APP_CONFIG.allowedDurationsMinutes];
-  const durationChoices = sortedUnique([...APP_CONFIG.allowedDurationsMinutes, ...offeredDurations]);
+  const durationChoices = sortedUnique([
+    ...APP_CONFIG.allowedDurationsMinutes,
+    ...APP_CONFIG.extendedDurationsMinutes,
+    ...APP_CONFIG.longDurationsMinutes,
+    ...offeredDurations,
+  ]);
 
   const toggleDuration = (minutes: number) => {
     const next = offeredDurations.includes(minutes)

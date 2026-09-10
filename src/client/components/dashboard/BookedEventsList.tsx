@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, CalendarDays, RotateCw, Trash2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { ChipGroup } from '../ui/Chip';
 import { Skeleton } from '../ui/Skeleton';
 import { AppointmentCard, type CopyKind } from './AppointmentCard';
 import { useTranslation } from '../../i18n';
@@ -15,6 +16,8 @@ import {
   decryptBookingDetails,
   type EncryptedBookingPayload,
 } from '../../lib/nostr/encryption';
+
+type RoleFilter = 'all' | 'hosted' | 'attending';
 
 export interface BookedEventsListProps {
   pubkey: string;
@@ -52,6 +55,7 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyCoordinate, setBusyCoordinate] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<HostAppointment | null>(null);
@@ -62,7 +66,14 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const { upcoming, past } = useMemo(() => groupAppointments(appointments, nowSeconds), [appointments, nowSeconds]);
+  // The role filter only matters once the user also has appointments they booked as a guest.
+  const hasAttending = useMemo(() => appointments.some((a) => !a.isHost), [appointments]);
+  const filtered = useMemo(
+    () =>
+      appointments.filter((a) => roleFilter === 'all' || (roleFilter === 'hosted' ? a.isHost : !a.isHost)),
+    [appointments, roleFilter]
+  );
+  const { upcoming, past } = useMemo(() => groupAppointments(filtered, nowSeconds), [filtered, nowSeconds]);
 
   useEffect(
     () => () => {
@@ -240,6 +251,19 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
           </Button>
         }
       />
+
+      {hasAttending && (
+        <ChipGroup<RoleFilter>
+          aria-label={t('dashboard.appointments.filtersLabel')}
+          value={roleFilter}
+          onChange={setRoleFilter}
+          options={[
+            { value: 'all', label: t('dashboard.appointments.filterAll') },
+            { value: 'hosted', label: t('dashboard.appointments.filterHosted') },
+            { value: 'attending', label: t('dashboard.appointments.filterAttending') },
+          ]}
+        />
+      )}
 
       {error && (
         <p role="alert" className="flex items-start gap-2 rounded-field border border-line bg-card p-3 font-sans text-ui leading-ui font-semibold text-ink">

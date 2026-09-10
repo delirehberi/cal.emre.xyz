@@ -2,7 +2,7 @@
 import React from 'react';
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup, act } from '@testing-library/react';
-import { getHashPath, hostHref, migrateLegacyPath, parseRoute, useHashPath, RESERVED_ROUTES } from '../src/client/lib/router';
+import { getHashPath, eventHref, hostHref, migrateLegacyPath, parseRoute, useHashPath, RESERVED_ROUTES } from '../src/client/lib/router';
 
 describe('parseRoute', () => {
   it('treats the root and empty paths as the default host', () => {
@@ -23,11 +23,21 @@ describe('parseRoute', () => {
     expect(parseRoute('/About/')).toEqual({ name: 'about' });
     expect(parseRoute('/dashboard')).toEqual({ name: 'dashboard' });
     expect(parseRoute('/dashboard/anything')).toEqual({ name: 'dashboard' });
-    expect(RESERVED_ROUTES).toEqual(['about', 'dashboard']);
+    expect(RESERVED_ROUTES).toEqual(['about', 'dashboard', 'e']);
+  });
+
+  it('routes /e/<naddr> to the event page and decodes the naddr', () => {
+    expect(parseRoute('/e/naddr1abc')).toEqual({ name: 'event', naddr: 'naddr1abc' });
+    expect(parseRoute('/E/naddr1abc?x=1')).toEqual({ name: 'event', naddr: 'naddr1abc' });
+    expect(parseRoute('/e')).toEqual({ name: 'booking', identifier: 'e' });
   });
 
   it('keeps an identifier that is not valid percent-encoding', () => {
     expect(parseRoute('/100%')).toEqual({ name: 'booking', identifier: '100%' });
+  });
+
+  it('builds event links', () => {
+    expect(eventHref('naddr1abc')).toBe('#/e/naddr1abc');
   });
 
   it('builds host links', () => {

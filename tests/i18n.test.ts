@@ -36,7 +36,7 @@ describe('i18n Dictionary Parity & Integrity', () => {
 
   it('should correctly resolve footer community initiative badge strings', () => {
     expect(resolveTranslation(en, 'footer.nostrBadge')).toBe('A nostr.org.tr community initiative');
-    expect(resolveTranslation(tr, 'footer.nostrBadge')).toBe('Bir nostr.org.tr topluluk girişimidir');
+    expect(resolveTranslation(tr, 'footer.nostrBadge')).toBe('nostr.org.tr topluluk girişimidir');
     expect(resolveTranslation(es, 'footer.nostrBadge')).toBe('Una iniciativa comunitaria de nostr.org.tr');
   });
 

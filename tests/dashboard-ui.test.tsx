@@ -220,6 +220,8 @@ describe('BookedEventsList', () => {
     rsvps: [],
     isDeleted: false,
     effectiveStatus: status,
+    hostPubkey,
+    isHost: true,
   });
 
   const Harness: React.FC<{ initial: HostAppointment[] }> = ({ initial }) => {

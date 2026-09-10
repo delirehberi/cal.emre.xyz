@@ -3,6 +3,7 @@ import { ArrowRight, Calendar, Check, Clock, Copy, Download, ExternalLink, Key }
 import { Button } from '../ui/Button';
 import { useTranslation } from '../../i18n';
 import { getDateParts } from '../../lib/calendar/format';
+import { eventHref } from '../../lib/router';
 import {
   generateICS,
   generateGoogleCalendarUrl,
@@ -26,6 +27,8 @@ export interface BookingSuccessProps {
   onBookAnother: () => void;
 }
 
+type CopyKind = 'naddr' | 'nsec' | 'link';
+
 const LINK_BUTTON =
   'flex items-center justify-center gap-1.5 rounded-button border border-line bg-card px-3.5 py-2 font-sans text-caption leading-ui font-semibold text-ink transition-colors hover:border-muted';
 
@@ -48,7 +51,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
   onBookAnother,
 }) => {
   const { t, locale } = useTranslation();
-  const [copied, setCopied] = useState<'naddr' | 'nsec' | null>(null);
+  const [copied, setCopied] = useState<CopyKind | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { weekday, dayMonth } = getDateParts(formattedDate, locale);
@@ -59,6 +62,8 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
       if (resetTimer.current) clearTimeout(resetTimer.current);
     };
   }, []);
+
+  const shareUrl = typeof window === 'undefined' ? eventHref(naddr) : `${window.location.origin}/${eventHref(naddr)}`;
 
   const description = `Nostr NIP-52 Appointment with ${hostName} (${hostNip05 || hostPubkey}). Coordinate: ${naddr}`;
   const googleUrl = generateGoogleCalendarUrl({ title: eventTitle, description, start, end });
@@ -82,7 +87,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
     document.body.removeChild(link);
   };
 
-  const copy = async (kind: 'naddr' | 'nsec', value: string) => {
+  const copy = async (kind: CopyKind, value: string) => {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(kind);
@@ -93,7 +98,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
     }
   };
 
-  const copyIcon = (kind: 'naddr' | 'nsec') =>
+  const copyIcon = (kind: CopyKind) =>
     copied === kind ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : <Copy aria-hidden="true" className="h-3.5 w-3.5" />;
 
   return (
@@ -156,6 +161,18 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
           <input id="booking-naddr" type="text" readOnly value={naddr} className={READONLY_FIELD} />
           <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void copy('naddr', naddr)} leftIcon={copyIcon('naddr')}>
             {copied === 'naddr' ? t('common.copied') : t('booking.success.copyNaddr')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="booking-share" className="font-sans text-caption leading-ui font-medium text-muted">
+          {t('eventDetails.shareWithOthers')}
+        </label>
+        <div className="flex items-center gap-2">
+          <input id="booking-share" type="text" readOnly value={shareUrl} className={READONLY_FIELD} />
+          <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void copy('link', shareUrl)} leftIcon={copyIcon('link')}>
+            {copied === 'link' ? t('common.copied') : t('eventDetails.copyInviteLink')}
           </Button>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
   generateDailyTimeSlots,
   generateMonthAvailability,
   formatSlotTime,
+  formatDuration,
   type WorkingHoursConfig,
   type BusyInterval,
 } from '../src/client/lib/calendar/slots';
@@ -262,6 +263,75 @@ describe('Calendar Engine: slots.ts', () => {
 
       const time24h = formatSlotTime(utcSeconds, 'UTC', 'en-US', true);
       expect(time24h).toBe('14:30');
+    });
+  });
+
+  describe('formatDuration', () => {
+    it('formats minutes under 60 with locale unit', () => {
+      expect(formatDuration(15, 'en')).toBe('15 min');
+      expect(formatDuration(30, 'tr')).toBe('30 dk');
+      expect(formatDuration(45, 'es')).toBe('45 min');
+    });
+
+    it('formats exact hours with singular and plural units', () => {
+      expect(formatDuration(60, 'en')).toBe('1 hr');
+      expect(formatDuration(120, 'en')).toBe('2 hrs');
+      expect(formatDuration(240, 'en')).toBe('4 hrs');
+      expect(formatDuration(360, 'en')).toBe('6 hrs');
+
+      expect(formatDuration(60, 'tr')).toBe('1 saat');
+      expect(formatDuration(120, 'tr')).toBe('2 saat');
+      expect(formatDuration(360, 'tr')).toBe('6 saat');
+    });
+
+    it('formats fractional hours cleanly', () => {
+      expect(formatDuration(90, 'en')).toBe('1.5 hrs');
+      expect(formatDuration(90, 'tr')).toBe('1.5 saat');
+    });
+  });
+
+  describe('Extended Meeting Durations (up to 6 hours / 360 min)', () => {
+    it('generates correct slot count for 2-hour (120m) meetings', () => {
+      const slots = generateDailyTimeSlots({
+        date: '2026-09-02',
+        durationMinutes: 120,
+        workingHours: defaultWorkingHours, // 9:00 - 17:00 (8h)
+        currentTimestamp: 0,
+      });
+
+      // 8 hours / 2 hours = 4 slots: 09:00, 11:00, 13:00, 15:00
+      expect(slots.length).toBe(4);
+      expect(slots[0].formattedStartTime).toContain('09:00');
+      expect(slots[3].formattedStartTime).toContain('15:00');
+    });
+
+    it('generates correct slot count for 6-hour (360m) meetings', () => {
+      const slots = generateDailyTimeSlots({
+        date: '2026-09-02',
+        durationMinutes: 360,
+        workingHours: defaultWorkingHours, // 9:00 - 17:00 (8h)
+        currentTimestamp: 0,
+      });
+
+      // 09:00 - 15:00 fits (6h). Next slot would be 15:00 - 21:00 which exceeds 17:00.
+      expect(slots.length).toBe(1);
+      expect(slots[0].formattedStartTime).toContain('09:00');
+    });
+
+    it('supports custom stepMinutes with larger meeting duration', () => {
+      const slots = generateDailyTimeSlots({
+        date: '2026-09-02',
+        durationMinutes: 60,
+        stepMinutes: 30, // 30-minute stepping
+        workingHours: defaultWorkingHours, // 09:00 - 17:00
+        currentTimestamp: 0,
+      });
+
+      // 09:00, 09:30, 10:00 ... last valid 60m meeting starts at 16:00
+      // 09:00 to 16:00 in 30m steps = 15 slots
+      expect(slots.length).toBe(15);
+      expect(slots[0].formattedStartTime).toContain('09:00');
+      expect(slots[slots.length - 1].formattedStartTime).toContain('16:00');
     });
   });
 });
