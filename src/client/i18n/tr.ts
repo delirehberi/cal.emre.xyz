@@ -42,6 +42,8 @@ export const tr: TranslationDictionary = {
       title: 'Bir zaman seç.',
       subtitle: 'Üç adımda randevunu planla. Takvimde yalnızca boş zamanlar görünür.',
     },
+    loadingHost: 'Profil Yükleniyor...',
+    loadingHostDesc: 'Nostr rölelerine bağlanılıyor ve takvim bilgileri alınıyor...',
     hostCard: {
       eyebrow: 'Takvim sahibi',
       verifiedBadge: 'Doğrulanmış NIP-05',

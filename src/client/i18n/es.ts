@@ -42,6 +42,8 @@ export const es: TranslationDictionary = {
       title: 'Elige una hora.',
       subtitle: 'Planifica tu cita en tres pasos. En el calendario solo aparecen las horas libres.',
     },
+    loadingHost: 'Cargando perfil del anfitrión...',
+    loadingHostDesc: 'Conectando a relés de Nostr y obteniendo disponibilidad...',
     hostCard: {
       eyebrow: 'Dueño del calendario',
       verifiedBadge: 'NIP-05 verificado',

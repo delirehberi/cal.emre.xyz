@@ -11,6 +11,20 @@ import { EventDetailsPage } from './pages/EventDetailsPage';
 import { APP_CONFIG } from '../config';
 import { parseRoute, useHashPath } from './lib/router';
 
+export const getInitialPath = (): string => {
+  if (typeof window === 'undefined') return '/';
+  if (window.location.hash) {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/')) {
+      return hash.slice(1);
+    }
+    if (hash.length > 1) {
+      return '/' + hash.slice(1);
+    }
+  }
+  return window.location.pathname || '/';
+};
+
 export const MainLayout: React.FC = () => {
   const path = useHashPath();
   const route = parseRoute(path);
@@ -27,6 +41,7 @@ export const MainLayout: React.FC = () => {
           <AboutPage />
         ) : (
           <BookingPage
+            key={(route.name === 'booking' && route.identifier) || 'default'}
             identifier={(route.name === 'booking' && route.identifier) || APP_CONFIG.defaultHostNip05}
           />
         )}

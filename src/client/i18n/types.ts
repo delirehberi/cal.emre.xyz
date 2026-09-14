@@ -46,6 +46,8 @@ export interface TranslationDictionary {
       title: string;
       subtitle: string;
     };
+    loadingHost: string;
+    loadingHostDesc: string;
     hostCard: {
       eyebrow: string;
       verifiedBadge: string;

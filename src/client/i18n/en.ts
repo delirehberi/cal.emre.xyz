@@ -42,6 +42,8 @@ export const en: TranslationDictionary = {
       title: 'Pick a time.',
       subtitle: 'Plan your appointment in three steps. Only open times show up in the calendar.',
     },
+    loadingHost: 'Loading Host Profile...',
+    loadingHostDesc: 'Connecting to Nostr relays and resolving availability...',
     hostCard: {
       eyebrow: 'Calendar owner',
       verifiedBadge: 'Verified NIP-05',

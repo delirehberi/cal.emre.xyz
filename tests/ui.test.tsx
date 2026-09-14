@@ -15,6 +15,9 @@ import { TimeSlotGrid } from '../src/client/components/booking/TimeSlotGrid';
 import { NostrEduBanner } from '../src/client/components/booking/NostrEduBanner';
 import { BookingSuccess } from '../src/client/components/booking/BookingSuccess';
 import { Footer } from '../src/client/components/layout/Footer';
+import { LoadBar } from '../src/client/components/ui/LoadBar';
+import { BookingPage } from '../src/client/pages/BookingPage';
+import { APP_CONFIG } from '../src/config';
 import { I18nProvider } from '../src/client/i18n';
 import { ThemeProvider } from '../src/client/context/ThemeContext';
 import { AuthProvider } from '../src/client/context/AuthContext';
@@ -178,6 +181,20 @@ describe('UI Primitives SSR and Rendering Tests', () => {
     );
     expect(textareaHtml).toContain('Meeting Notes');
     expect(textareaHtml).toContain('Discuss NIP-52');
+  });
+
+  it('renders LoadBar component with progressbar role and accessibility labels', () => {
+    const html = renderToString(<LoadBar active={true} label="Loading Host Profile" />);
+    expect(html).toContain('role="progressbar"');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('aria-label="Loading Host Profile"');
+    expect(html).toContain('animate-loadbar');
+
+    const fixedTopHtml = renderToString(<LoadBar active={true} fixedTop={true} />);
+    expect(fixedTopHtml).toContain('fixed top-0');
+
+    const inactiveHtml = renderToString(<LoadBar active={false} />);
+    expect(inactiveHtml).toBe('');
   });
 });
 
@@ -383,6 +400,35 @@ describe('Booking Components Rendering Tests', () => {
     expect(html).toContain('aria-label="Footer links"');
     expect(html).toContain('rel="noopener noreferrer"');
   });
+
+  it('renders BookingPage with alternate user without flashing default host', () => {
+    const alternateNpub = 'npub1nqvz7vzg3llhpcyyywt5vdlt5xvc4a7dwkpm5tgm2skdvdzt9cjsnnq5pv';
+    const html = renderToString(
+      wrapper({
+        children: <BookingPage identifier={alternateNpub} />,
+      })
+    );
+
+    // Should render the loadbar / progressbar and loading banner with the alternate identifier
+    expect(html).toContain('role="progressbar"');
+    expect(html).toContain(alternateNpub);
+
+    // MUST NEVER contain default host's name, nip05, or pubkey
+    expect(html).not.toContain('delirehberi@emre.xyz');
+    expect(html).not.toContain('Emre Yılmaz');
+    expect(html).not.toContain(APP_CONFIG.defaultHostPubkey);
+  });
+
+  it('renders BookingPage with default host directly without loadbar when at root', () => {
+    const html = renderToString(
+      wrapper({
+        children: <BookingPage identifier={APP_CONFIG.defaultHostNip05} />,
+      })
+    );
+
+    // Default host profile should be rendered
+    expect(html).toContain('delirehberi');
+  });
 });
 
 describe('Brand components', () => {
@@ -449,4 +495,5 @@ describe('ChipGroup layout override', () => {
     expect(html).toContain('contents');
     expect(html).not.toContain('class="flex flex-wrap');
   });
+
 });

@@ -23,6 +23,7 @@ import { useTranslation } from '../i18n';
 import { getDateParts } from '../lib/calendar/format';
 import { useIsTabletUp } from '../lib/useMediaQuery';
 import { AlertCircle } from 'lucide-react';
+import { LoadBar } from '../components/ui/LoadBar';
 
 import { hostDataCache } from '../lib/nostr/cache';
 
@@ -43,6 +44,17 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
     } catch {
       return raw.trim();
     }
+  }, [identifier]);
+
+  const isDefaultHost = useMemo(() => {
+    if (!identifier) return true;
+    const normalized = identifier.trim().toLowerCase();
+    return (
+      normalized === APP_CONFIG.defaultHostNip05.toLowerCase() ||
+      normalized === 'delirehberi' ||
+      normalized === 'delirehberi@emre.xyz' ||
+      normalized === APP_CONFIG.defaultHostPubkey.toLowerCase()
+    );
   }, [identifier]);
 
   // Resolve cached initial host data synchronously for instant 0ms hydration
@@ -67,25 +79,31 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
       }
     }
 
-    // Default master host fallback
-    if (!pubkey && (
-      normalizedIdentifier === APP_CONFIG.defaultHostNip05.toLowerCase() ||
-      normalizedIdentifier === 'delirehberi' ||
-      normalizedIdentifier === 'delirehberi@emre.xyz'
-    )) {
+    // Default master host fallback strictly when viewing default host
+    if (
+      !pubkey &&
+      isDefaultHost &&
+      (normalizedIdentifier === APP_CONFIG.defaultHostNip05.toLowerCase() ||
+        normalizedIdentifier === 'delirehberi' ||
+        normalizedIdentifier === 'delirehberi@emre.xyz' ||
+        !identifier)
+    ) {
       pubkey = APP_CONFIG.defaultHostPubkey;
     }
 
     const profile = pubkey ? hostDataCache.getCachedProfile(pubkey) : null;
     const relays = pubkey ? hostDataCache.getCachedRelays(pubkey) : null;
 
+    const isActualDefaultProfile = profile?.pubkey === APP_CONFIG.defaultHostPubkey;
+    const resolvedProfile = isDefaultHost ? profile : (isActualDefaultProfile ? null : profile);
+
     return {
       pubkey,
-      profile,
+      profile: resolvedProfile,
       relays: relays ? relays.all : Array.from(APP_CONFIG.defaultRelays),
-      hasCachedData: Boolean(pubkey && profile),
+      hasCachedData: Boolean(pubkey && resolvedProfile),
     };
-  }, [hostIdentifier]);
+  }, [hostIdentifier, isDefaultHost, identifier]);
 
   const [hostPubkey, setHostPubkey] = useState<string | null>(initialData.pubkey);
   const [hostProfile, setHostProfile] = useState<HostProfile | null>(initialData.profile);
@@ -326,6 +344,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
     );
   }
 
+  const showLoadingState = isLoadingHost && !initialData.hasCachedData;
   const slotParts = selectedSlot ? getDateParts(selectedDate, locale) : null;
   const durationLabel = t('booking.duration.minutes', { minutes: selectedDuration });
 
@@ -377,6 +396,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
   );
 
   return (
+    <>
+    <LoadBar fixedTop active={showLoadingState} label={t('booking.loadingHost')} />
     <div className="mx-auto w-full max-w-[1440px] px-4 pt-6 pb-8 tablet:px-8 tablet:pt-12 tablet:pb-[72px] desktop:px-20">
       <div className="flex flex-col gap-5 tablet:gap-8">
         <header className="flex flex-col gap-2.5">
@@ -387,15 +408,20 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
             {t('booking.intro.title')}
           </h1>
           <p className="font-sans text-body text-muted tablet:text-lead">{t('booking.intro.subtitle')}</p>
+          {showLoadingState && (
+            <p role="status" className="font-mono text-caption leading-ui text-muted">
+              {t('booking.loadingHostDesc')} · <span className="text-ink">{hostIdentifier}</span>
+            </p>
+          )}
         </header>
 
         <div className="grid grid-cols-1 items-start gap-5 tablet:grid-cols-2 tablet:grid-rows-[auto_auto_1fr] tablet:gap-6 desktop:grid-cols-[320px_456px_minmax(0,1fr)] desktop:grid-rows-[auto_1fr]">
           <div className="tablet:col-start-1 tablet:row-start-1">
             <HostCard
-              profile={hostProfile}
+              profile={showLoadingState ? null : hostProfile}
               nip05Identifier={hostIdentifier}
               timezone={workingHours.timezone}
-              isLoading={isLoadingHost}
+              isLoading={showLoadingState}
             />
           </div>
 
@@ -436,5 +462,6 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
         />
       )}
     </div>
+    </>
   );
 };

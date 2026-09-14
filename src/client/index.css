@@ -267,3 +267,22 @@
     }
   }
 }
+
+@keyframes loadbar-indeterminate {
+  0% {
+    transform: translateX(-100%);
+    width: 30%;
+  }
+  50% {
+    width: 60%;
+  }
+  100% {
+    transform: translateX(350%);
+    width: 30%;
+  }
+}
+
+.animate-loadbar {
+  animation: loadbar-indeterminate 1.4s ease-in-out infinite;
+}
+
