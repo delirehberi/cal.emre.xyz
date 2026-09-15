@@ -16,6 +16,8 @@ import {
 import { I18nProvider } from '../src/client/i18n';
 import { ThemeProvider } from '../src/client/context/ThemeContext';
 import { AuthProvider } from '../src/client/context/AuthContext';
+import { generateSecretKey } from 'nostr-tools';
+import { PrivateKeySigner } from '../src/client/lib/nostr/signer';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider>
@@ -112,6 +114,27 @@ describe('Host Dashboard & Availability Settings Tests (Phase 7)', () => {
       expect(html).toContain('Upcoming appointments');
       expect(html).toContain('No upcoming appointments.');
       expect(html).toContain('Refresh');
+    });
+
+    it('renders BookedEventsList safely when authenticated with PrivateKeySigner (nsec)', () => {
+      const html = renderToString(
+        wrapper({
+          children: (
+            <BookedEventsList
+              pubkey={dummyPubkey}
+              signer={new PrivateKeySigner(generateSecretKey())}
+              hostTimezone="Europe/Istanbul"
+              appointments={[]}
+              onAppointmentsChange={() => undefined}
+              isLoading={false}
+              onRefresh={() => undefined}
+            />
+          ),
+        })
+      );
+
+      expect(html).toContain('Upcoming appointments');
+      expect(html).toContain('No upcoming appointments.');
     });
 
     it('renders the sign-in prompt when no host is signed in', () => {

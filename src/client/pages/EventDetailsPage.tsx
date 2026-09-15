@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Card } from '../components/ui/Card';
 import { hostHref } from '../lib/router';
 import { Button } from '../components/ui/Button';
@@ -159,10 +159,15 @@ export const EventDetailsPage: React.FC<EventDetailsPageProps> = ({ naddr }) => 
     fetchEventDetails();
   }, [fetchEventDetails]);
 
-  // Decryption handler for participants
-  const handleDecrypt = useCallback(async () => {
-    if (!signer?.decrypt || !event?.content || !event.pubkey) return;
+  const attemptedDecryptionRef = useRef(false);
 
+  // Decryption handler for participants
+  const handleDecrypt = useCallback(async (force = false) => {
+    if (!signer?.decrypt || !event?.content || !event.pubkey) return;
+    if (!force && attemptedDecryptionRef.current) return;
+    attemptedDecryptionRef.current = true;
+
+    // decryptBookingDetails also reads plain JSON payloads, so no separate check is needed.
     setIsDecrypting(true);
     try {
       const dec = await decryptBookingDetails(signer, event.pubkey, event.content);
@@ -177,7 +182,7 @@ export const EventDetailsPage: React.FC<EventDetailsPageProps> = ({ naddr }) => 
   }, [signer, event]);
 
   useEffect(() => {
-    if (signer?.decrypt && event?.content && !decrypted) {
+    if (signer?.decrypt && event?.content && !decrypted && !attemptedDecryptionRef.current) {
       handleDecrypt();
     }
   }, [signer, event, decrypted, handleDecrypt]);
@@ -423,7 +428,7 @@ export const EventDetailsPage: React.FC<EventDetailsPageProps> = ({ naddr }) => 
                 variant="secondary"
                 size="sm"
                 className="self-start"
-                onClick={() => void handleDecrypt()}
+                onClick={() => void handleDecrypt(true)}
                 isLoading={isDecrypting}
                 leftIcon={<Lock aria-hidden="true" className={ICON} />}
               >

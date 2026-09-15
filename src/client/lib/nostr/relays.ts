@@ -402,10 +402,11 @@ class RelayPoolManager {
     }
 
     const publishPromises = relays.map(async (relay): Promise<PublishResult> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Publish timeout')), timeoutMs)
-        );
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Publish timeout')), timeoutMs);
+        });
 
         await Promise.race([
           Promise.all(this.pool.publish([relay], signedEvent)),
@@ -419,6 +420,10 @@ class RelayPoolManager {
           success: false,
           error: err instanceof Error ? err.message : String(err),
         };
+      } finally {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+        }
       }
     });
 
