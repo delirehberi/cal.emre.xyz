@@ -43,9 +43,11 @@ icsRouter.get('/:naddr/ics', async (c) => {
     ])
   );
 
+  const readRelays = nostrPool.getReadRelays(targetRelays);
+
   try {
     const pool = nostrPool.getPool();
-    const event = await pool.get(targetRelays, {
+    const event = await pool.get(readRelays, {
       kinds: [kind],
       authors: [pubkey],
       '#d': [identifier],

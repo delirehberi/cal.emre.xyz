@@ -1,6 +1,6 @@
 import { SimplePool, type Event, type Filter } from 'nostr-tools';
 import { APP_CONFIG } from '../../../config';
-import { parseRelayList, parseContactRelays, filterHealthyRelays, type RelayList } from './nip65';
+import { parseRelayList, parseContactRelays, filterHealthyRelays, buildCacheRelayUrl, type RelayList } from './nip65';
 import {
   parseTimeCalendarEvent,
   parseDateCalendarEvent,
@@ -63,6 +63,22 @@ class RelayPoolManager {
   }
 
   /**
+   * Returns read-only query relays.
+   * If a cache relay is configured, bundles upstream bootstrap relays into a single cache relay query URL.
+   * Otherwise falls back to direct bootstrap relays.
+   */
+  getReadRelays(customRelays?: string[]): string[] {
+    const upstreams = this.getBootstrapRelays(customRelays);
+    if (APP_CONFIG.cacheRelayUrl) {
+      const cacheUrl = buildCacheRelayUrl(upstreams, APP_CONFIG.cacheRelayUrl);
+      if (cacheUrl) {
+        return [cacheUrl];
+      }
+    }
+    return upstreams;
+  }
+
+  /**
    * Fetches Kind 0 user metadata profile with persistent caching.
    */
   async fetchHostProfile(
@@ -77,7 +93,7 @@ class RelayPoolManager {
       }
     }
 
-    const queryRelays = this.getBootstrapRelays(relays);
+    const queryRelays = this.getReadRelays(relays);
     const filter: Filter = {
       kinds: [0],
       authors: [pubkey],
@@ -125,7 +141,7 @@ class RelayPoolManager {
       }
     }
 
-    const queryRelays = this.getBootstrapRelays(bootstrapRelays);
+    const queryRelays = this.getReadRelays(bootstrapRelays);
 
     try {
       // Try Kind 10002 first
@@ -182,7 +198,7 @@ class RelayPoolManager {
     pubkey: string,
     options?: { since?: number; until?: number; relays?: string[] }
   ): Promise<{ timeEvents: TimeCalendarEvent[]; dateEvents: DateCalendarEvent[] }> {
-    const queryRelays = this.getBootstrapRelays(options?.relays);
+    const queryRelays = this.getReadRelays(options?.relays);
 
     const filter: Filter = {
       kinds: [31923, 31922],
@@ -222,7 +238,7 @@ class RelayPoolManager {
   ): Promise<CalendarRSVP[]> {
     if (eventCoordinates.length === 0) return [];
 
-    const queryRelays = this.getBootstrapRelays(relays);
+    const queryRelays = this.getReadRelays(relays);
 
     const filter: Filter = {
       kinds: [31925],
@@ -252,7 +268,7 @@ class RelayPoolManager {
     pubkey: string,
     options?: { relays?: string[] }
   ): Promise<HostAppointment[]> {
-    const queryRelays = this.getBootstrapRelays(options?.relays);
+    const queryRelays = this.getReadRelays(options?.relays);
 
     // 1. Fetch time calendar events authored by host or with host in p-tag
     const [authoredEvents, taggedEvents] = await Promise.all([
@@ -292,7 +308,7 @@ class RelayPoolManager {
 
     // 2. Fetch RSVPs and Deletion Events (Kind 5) in parallel
     const [rsvpsRaw, deletions] = await Promise.all([
-      this.fetchCalendarRSVPs(coordinates, queryRelays),
+      this.fetchCalendarRSVPs(coordinates, options?.relays),
       this.pool.querySync(queryRelays, {
         kinds: [5],
         authors: [pubkey],
@@ -434,7 +450,14 @@ class RelayPoolManager {
    * Closes all active connections.
    */
   close(): void {
-    this.pool.close(Array.from(APP_CONFIG.defaultRelays));
+    const relaysToClose = new Set<string>(APP_CONFIG.defaultRelays);
+    if (APP_CONFIG.cacheRelayUrl) {
+      const cacheUrl = buildCacheRelayUrl(Array.from(APP_CONFIG.defaultRelays), APP_CONFIG.cacheRelayUrl);
+      if (cacheUrl) {
+        relaysToClose.add(cacheUrl);
+      }
+    }
+    this.pool.close(Array.from(relaysToClose));
   }
 }
 

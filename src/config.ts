@@ -19,6 +19,7 @@ export const APP_CONFIG = {
     tr: 'Bu aracı kullanarak doğrudan benimle bir toplantı planlayabilirsiniz. Randevu oluşturmak için aşağıdan uygun süreyi ve saat aralığını seçin.',
     es: 'Puedes programar una reunión conmigo directamente con esta herramienta. Selecciona tu duración y horario preferidos a continuación para reservar una cita.',
   },
+  cacheRelayUrl: 'wss://cache.nostr.org.tr',
   defaultRelays: [
     'wss://relay.emre.xyz',
     'wss://relay.nostr.band',

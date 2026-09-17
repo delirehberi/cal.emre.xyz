@@ -93,10 +93,11 @@ export const EventDetailsPage: React.FC<EventDetailsPageProps> = ({ naddr }) => 
     const targetRelays = Array.from(
       new Set([...(decodedNaddr.relays || []), ...APP_CONFIG.defaultRelays])
     );
+    const readRelays = nostrPool.getReadRelays(targetRelays);
 
     try {
       const pool = nostrPool.getPool();
-      const rawEvent = await pool.get(targetRelays, {
+      const rawEvent = await pool.get(readRelays, {
         kinds: [31923],
         authors: [decodedNaddr.pubkey],
         '#d': [decodedNaddr.identifier],

@@ -3,6 +3,7 @@ import type { Event } from 'nostr-tools';
 import {
   normalizeRelayUrl,
   filterHealthyRelays,
+  buildCacheRelayUrl,
   parseRelayList,
   parseContactRelays,
   createRelayListEventTemplate,
@@ -88,5 +89,63 @@ describe('nip65.ts: NIP-65 Relay Metadata Operations', () => {
       ['r', 'wss://relay2.com', 'write'],
       ['r', 'wss://relay3.com'],
     ]);
+  });
+
+  it('builds cache relay URL with comma-separated upstream relays', () => {
+    const upstreams = [
+      'wss://relay.damus.io',
+      'wss://nos.lol',
+      'wss://relay.primal.net',
+    ];
+    const cacheUrl = buildCacheRelayUrl(upstreams, 'wss://cache.nostr.org.tr');
+    expect(cacheUrl).toBe('wss://cache.nostr.org.tr?relays=wss://relay.damus.io,wss://nos.lol,wss://relay.primal.net');
+  });
+
+  it('builds cache relay URL and normalizes/filters invalid upstreams', () => {
+    const upstreams = [
+      '  wss://RELAY.DAMUS.IO/ ',
+      'http://invalid-protocol.com',
+      'wss://nos.lol/',
+      '',
+    ];
+    const cacheUrl = buildCacheRelayUrl(upstreams, 'wss://cache.nostr.org.tr/');
+    expect(cacheUrl).toBe('wss://cache.nostr.org.tr?relays=wss://relay.damus.io,wss://nos.lol');
+  });
+
+  it('returns base cache relay if upstream list is empty', () => {
+    expect(buildCacheRelayUrl([], 'wss://cache.nostr.org.tr/')).toBe('wss://cache.nostr.org.tr');
+  });
+
+  it('returns empty string if cache relay base is empty or omitted', () => {
+    expect(buildCacheRelayUrl(['wss://relay.damus.io'], '')).toBe('');
+    expect(buildCacheRelayUrl(['wss://relay.damus.io'], undefined)).toBe('');
+  });
+});
+
+describe('relays.ts: RelayPoolManager Read vs Write Relay Resolution', () => {
+  it('resolves read relays bundled into the cache relay endpoint while bootstrap relays stay unbundled', async () => {
+    const { nostrPool } = await import('../src/client/lib/nostr/relays');
+    const { APP_CONFIG } = await import('../src/config');
+
+    const bootstrapRelays = nostrPool.getBootstrapRelays();
+    expect(bootstrapRelays.length).toBeGreaterThan(0);
+    expect(bootstrapRelays[0]).not.toContain('?relays=');
+
+    const readRelays = nostrPool.getReadRelays();
+    expect(readRelays).toHaveLength(1);
+    expect(readRelays[0]).toContain(APP_CONFIG.cacheRelayUrl);
+    expect(readRelays[0]).toContain('?relays=');
+    for (const upstream of bootstrapRelays) {
+      expect(readRelays[0]).toContain(upstream);
+    }
+  });
+
+  it('incorporates custom relays into read relay bundling', async () => {
+    const { nostrPool } = await import('../src/client/lib/nostr/relays');
+    const custom = ['wss://custom.relay.org'];
+    const readRelays = nostrPool.getReadRelays(custom);
+
+    expect(readRelays).toHaveLength(1);
+    expect(readRelays[0]).toContain('wss://custom.relay.org');
   });
 });

@@ -57,6 +57,26 @@ export function filterHealthyRelays(relays: string[]): string[] {
 }
 
 /**
+ * Constructs a cache relay URL bundling upstream relay endpoints for aggregated querying.
+ * e.g. wss://cache.nostr.org.tr?relays=wss://relay.damus.io,wss://nos.lol,wss://relay.primal.net
+ */
+export function buildCacheRelayUrl(upstreamRelays: string[], cacheRelayBase?: string): string {
+  const base = (cacheRelayBase || '').trim();
+  if (!base) {
+    return '';
+  }
+
+  const healthyRelays = filterHealthyRelays(upstreamRelays);
+  const cleanBase = base.replace(/\/+$/, '');
+
+  if (healthyRelays.length === 0) {
+    return cleanBase;
+  }
+
+  return `${cleanBase}?relays=${healthyRelays.join(',')}`;
+}
+
+/**
  * Parses a Kind 10002 Relay List Metadata event.
  */
 export function parseRelayList(event: Event): RelayList {
