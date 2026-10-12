@@ -26,6 +26,7 @@ vi.mock('../src/client/lib/nostr/relays', () => ({
 import { WorkingHoursForm } from '../src/client/components/dashboard/WorkingHoursForm';
 import { BookedEventsList } from '../src/client/components/dashboard/BookedEventsList';
 import { Tabs } from '../src/client/components/ui/Tabs';
+import { TimeField, parseTimeInput, formatMinutes } from '../src/client/components/ui/TimeField';
 import type { HostAppointment } from '../src/client/lib/nostr/relays';
 
 const withI18n = (ui: React.ReactElement) => <I18nProvider>{ui}</I18nProvider>;
@@ -72,6 +73,37 @@ describe('Tabs underline variant', () => {
     await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Second' })).toHaveProperty('ariaSelected', 'true');
     expect(first.getAttribute('aria-selected')).toBe('false');
+  });
+});
+
+describe('TimeField', () => {
+  it('parses 24-hour input and rejects everything else', () => {
+    expect(parseTimeInput('09:00')).toBe(540);
+    expect(parseTimeInput('9:05')).toBe(545);
+    expect(parseTimeInput('24:00')).toBe(1440);
+    expect(parseTimeInput('24:30')).toBeNull();
+    expect(parseTimeInput('12:60')).toBeNull();
+    expect(parseTimeInput('9 AM')).toBeNull();
+    expect(parseTimeInput('')).toBeNull();
+    expect(formatMinutes(1440)).toBe('24:00');
+    expect(formatMinutes(545)).toBe('09:05');
+  });
+
+  it('commits valid times while typing and restores the last valid one on blur', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<TimeField value={540} onChange={onChange} aria-label="Start" />);
+    const input = screen.getByLabelText('Start') as HTMLInputElement;
+    expect(input.value).toBe('09:00');
+
+    await user.clear(input);
+    await user.type(input, '13:45');
+    expect(onChange).toHaveBeenLastCalledWith(825);
+
+    await user.clear(input);
+    await user.type(input, '99:99');
+    await user.tab();
+    expect(input.value).toBe('09:00');
   });
 });
 

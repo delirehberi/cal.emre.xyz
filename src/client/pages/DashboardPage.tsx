@@ -18,10 +18,10 @@ type DashboardTab = 'availability' | 'appointments';
 const TABS_ID = 'dashboard';
 
 const StatCard: React.FC<{ label: string; value: number; sub: string }> = ({ label, value, sub }) => (
-  <div className="flex min-w-0 flex-col gap-1.5 rounded-card border border-line bg-card p-[22px]">
-    <p className="font-sans text-ui leading-ui font-medium text-muted">{label}</p>
-    <p className="font-display text-stat font-extrabold text-ink">{value}</p>
-    <p className="font-sans text-caption leading-ui text-muted">{sub}</p>
+  <div className="flex min-w-0 flex-col gap-1 rounded-card border border-line bg-card p-3.5 tablet:gap-1.5 tablet:p-[22px]">
+    <p className="font-sans text-small leading-ui font-medium text-muted tablet:text-ui">{label}</p>
+    <p className="font-display text-display-xs font-extrabold text-ink tablet:text-stat">{value}</p>
+    <p className="font-sans text-eyebrow leading-ui text-muted tablet:text-caption">{sub}</p>
   </div>
 );
 
@@ -87,17 +87,17 @@ export const DashboardPage: React.FC = () => {
         : t('dashboard.stats.monthSubDown', { count: Math.abs(stats.monthDelta) });
 
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-7 px-4 pt-6 pb-8 tablet:px-8 tablet:pt-12 tablet:pb-[72px] desktop:px-20">
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 pt-6 pb-8 tablet:gap-7 tablet:px-8 tablet:pt-12 tablet:pb-[72px] desktop:px-20">
       <header className="flex flex-col gap-2">
         <p className="font-mono text-label leading-ui font-medium text-muted uppercase">{t('dashboard.eyebrow')}</p>
-        <h1 className="font-display text-display-s font-extrabold break-words text-ink tablet:text-display-ml">
+        <h1 className="font-display text-display-xs font-extrabold break-words text-ink tablet:text-display-ml">
           {t('dashboard.greeting', { name: getDisplayName(user) })}
         </h1>
       </header>
 
       <section
         aria-label={t('dashboard.shareLink.label')}
-        className="flex flex-col gap-4 rounded-card border border-line bg-card p-5 tablet:flex-row tablet:items-center"
+        className="flex flex-col gap-3.5 rounded-card border border-line bg-card p-4 tablet:flex-row tablet:items-center tablet:gap-4 tablet:p-5"
       >
         <div className="flex min-w-0 flex-1 items-center gap-3.5">
           <span
@@ -108,7 +108,7 @@ export const DashboardPage: React.FC = () => {
           </span>
           <div className="flex min-w-0 flex-col gap-0.5">
             <p className="font-sans text-caption leading-ui text-muted">{t('dashboard.shareLink.label')}</p>
-            <p className="truncate font-mono text-body-l leading-ui font-medium text-ink">{displayUrl}</p>
+            <p className="truncate font-mono text-ui leading-ui tablet:text-code font-medium text-ink">{displayUrl}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -126,7 +126,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 tablet:grid-cols-3" aria-label={t('dashboard.eyebrow')}>
+      <section className="grid grid-cols-3 gap-2 tablet:gap-5" aria-label={t('dashboard.eyebrow')}>
         <StatCard
           label={t('dashboard.stats.upcoming')}
           value={stats.upcoming}

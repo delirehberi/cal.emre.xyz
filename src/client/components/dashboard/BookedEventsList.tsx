@@ -30,7 +30,7 @@ export interface BookedEventsListProps {
 
 const SectionHeader: React.FC<{ title: string; count: number; action?: React.ReactNode }> = ({ title, count, action }) => (
   <div className="flex items-center gap-2.5">
-    <h2 className="font-display text-heading-l font-bold text-ink">{title}</h2>
+    <h2 className="font-display text-heading-s font-bold text-ink tablet:text-heading-l">{title}</h2>
     <span className="rounded-full bg-line px-[9px] py-[3px] font-mono text-small leading-ui font-medium text-muted">
       {count}
     </span>
@@ -224,7 +224,7 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
   const error = actionError ?? loadError;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5 tablet:gap-6">
       <SectionHeader
         title={t('dashboard.appointments.upcomingTitle')}
         count={upcoming.length}
@@ -236,7 +236,7 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
             isLoading={isLoading}
             leftIcon={<RotateCw aria-hidden="true" className="h-3.5 w-3.5" />}
           >
-            {t('dashboard.appointments.refresh')}
+            <span className="sr-only tablet:not-sr-only">{t('dashboard.appointments.refresh')}</span>
           </Button>
         }
       />
@@ -249,7 +249,7 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
       )}
 
       {isLoading && appointments.length === 0 ? (
-        <div className="grid gap-6 desktop:grid-cols-2" aria-busy="true">
+        <div className="grid gap-3.5 tablet:gap-6 desktop:grid-cols-2" aria-busy="true">
           <Skeleton className="h-[212px] rounded-card" />
           <Skeleton className="h-[212px] rounded-card" />
         </div>
@@ -260,13 +260,13 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
           <p className="font-sans text-ui leading-ui text-muted">{t('dashboard.appointments.noAppointments')}</p>
         </div>
       ) : (
-        <div className="grid gap-6 desktop:grid-cols-2">{upcoming.map((a) => renderCard(a, false))}</div>
+        <div className="grid gap-3.5 tablet:gap-6 desktop:grid-cols-2">{upcoming.map((a) => renderCard(a, false))}</div>
       )}
 
       {past.length > 0 && (
         <>
           <SectionHeader title={t('dashboard.appointments.pastTitle')} count={past.length} />
-          <div className="grid gap-6 desktop:grid-cols-2">{past.map((a) => renderCard(a, true))}</div>
+          <div className="grid gap-3.5 tablet:gap-6 desktop:grid-cols-2">{past.map((a) => renderCard(a, true))}</div>
         </>
       )}
 

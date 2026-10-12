@@ -615,11 +615,13 @@ describe('BookingPage', () => {
     await waitFor(() => expect(screen.getByRole('radio', { name: '45 min' }).getAttribute('aria-checked')).toBe('true'));
     expect(screen.queryByRole('radio', { name: '30 min' })).toBeNull();
     expect(screen.queryByRole('button', { name: /longer/i })).toBeNull();
-    const times = within(screen.getByRole('group', { name: 'Open times' })).getAllByRole('button').map((b) => b.textContent);
     // 13:00-15:00 in 45 minute steps. Today's 13:00 and 13:45 start before 08:00 plus 6 hours of notice,
     // so the page moves on to the next Monday where both are open.
-    expect(screen.getByText('Monday, March 11 · 45 min')).toBeTruthy();
-    expect(times).toEqual(['13:00', '13:45']);
+    await waitFor(() => {
+      expect(screen.getByText('Monday, March 11 · 45 min')).toBeTruthy();
+      const times = within(screen.getByRole('group', { name: 'Open times' })).getAllByRole('button').map((b) => b.textContent);
+      expect(times).toEqual(['13:00', '13:45']);
+    });
     expect(relays.fetchHostAvailability).toHaveBeenCalledWith(hostPubkey, ['wss://r']);
   });
 

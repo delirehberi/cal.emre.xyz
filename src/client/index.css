@@ -150,6 +150,9 @@
   --text-display-l: 44px;
   --text-display-l--line-height: 1.19;
   --text-display-l--letter-spacing: -0.02em;
+  --text-display-xs: 34px;
+  --text-display-xs--line-height: 1.19;
+  --text-display-xs--letter-spacing: -0.03em;
   --text-display-ml: 48px;
   --text-display-ml--line-height: 1.19;
   --text-display-ml--letter-spacing: -0.03em;
@@ -192,6 +195,8 @@
   --text-label: 12px;
   --text-label--line-height: 1.2;
   --text-label--letter-spacing: 0.08em;
+  --text-code: 16px;
+  --text-code--line-height: 1.2;
   --text-eyebrow: 11px;
   --text-eyebrow--line-height: 1.2;
   --text-eyebrow--letter-spacing: 0.06em;

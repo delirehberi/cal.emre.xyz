@@ -64,7 +64,7 @@ export function Tabs<T extends string>({ items, value, onChange, label, idBase, 
       aria-label={label}
       className={cn(
         variant === 'underline'
-          ? 'flex items-end overflow-x-auto shadow-[inset_0_-1px_0_0] shadow-line'
+          ? 'flex items-end shadow-[inset_0_-1px_0_0] shadow-line'
           : 'flex gap-1 rounded-button border border-line bg-paper p-1',
         className
       )}
@@ -88,7 +88,7 @@ export function Tabs<T extends string>({ items, value, onChange, label, idBase, 
             className={cn(
               variant === 'underline'
                 ? [
-                    'flex shrink-0 cursor-pointer items-center justify-center gap-1.5 border-b-2 px-5 py-3.5 font-sans text-body leading-ui font-semibold whitespace-nowrap transition-colors',
+                    'flex min-w-0 flex-1 cursor-pointer items-start justify-center gap-1.5 border-b-2 px-2 py-3.5 text-center font-sans text-caption leading-ui font-semibold transition-colors tablet:flex-none tablet:px-5 tablet:text-body tablet:whitespace-nowrap',
                     selected ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink',
                   ]
                 : [

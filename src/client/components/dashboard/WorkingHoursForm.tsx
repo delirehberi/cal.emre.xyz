@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Select } from '../ui/Input';
 import { Toggle } from '../ui/Toggle';
+import { TimeField } from '../ui/TimeField';
 import { TimezoneSelect } from '../booking/TimeSlotGrid';
 import { useTranslation } from '../../i18n';
 import {
@@ -50,15 +51,6 @@ const BUFFER_OPTIONS = [0, 5, 10, 15, 30, 60];
 const NOTICE_OPTIONS = [0, 60, 120, 240, 720, 1440, 2880, 10080];
 const DEFAULT_NOTICE_MINUTES = 15;
 
-const toTimeValue = (minutes: number): string =>
-  `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-
-const fromTimeValue = (value: string): number | null => {
-  const match = /^(\d{2}):(\d{2})$/.exec(value);
-  if (!match) return null;
-  return Number(match[1]) * 60 + Number(match[2]);
-};
-
 const sortedUnique = (values: number[]): number[] => Array.from(new Set(values)).sort((a, b) => a - b);
 
 /**
@@ -95,9 +87,7 @@ export const WorkingHoursForm: React.FC<WorkingHoursFormProps> = ({ pubkey, sign
     });
   };
 
-  const setDayTime = (day: number, edge: 'start' | 'end', value: string) => {
-    const minutes = fromTimeValue(value);
-    if (minutes === null) return;
+  const setDayTime = (day: number, edge: 'start' | 'end', minutes: number) => {
     update({ dayHours: { ...config.dayHours, [day]: { ...dayWindow(day), [edge]: minutes } } });
   };
 
@@ -141,8 +131,8 @@ export const WorkingHoursForm: React.FC<WorkingHoursFormProps> = ({ pubkey, sign
     setError(null);
 
     const hasInvalidWindow = config.workingDays.some((day) => {
-      const window = dayWindow(day);
-      return window.end <= window.start;
+      const hours = dayWindow(day);
+      return hours.end <= hours.start;
     });
     if (hasInvalidWindow || config.workingDays.length === 0) {
       setError(t('dashboard.availability.invalidHours'));
@@ -199,7 +189,7 @@ export const WorkingHoursForm: React.FC<WorkingHoursFormProps> = ({ pubkey, sign
           {WEEK.map(({ day, key }) => {
             const dayName = t(`dashboard.availability.days.${key}`);
             const on = config.workingDays.includes(day);
-            const window = dayWindow(day);
+            const hours = dayWindow(day);
             return (
               <li key={day} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line py-3.5">
                 <Toggle
@@ -217,24 +207,18 @@ export const WorkingHoursForm: React.FC<WorkingHoursFormProps> = ({ pubkey, sign
                 </span>
                 {on ? (
                   <div className="flex items-center gap-3">
-                    <input
-                      type="time"
-                      step={900}
-                      value={toTimeValue(window.start)}
-                      onChange={(event) => setDayTime(day, 'start', event.target.value)}
+                    <TimeField
+                      value={hours.start}
+                      onChange={(minutes) => setDayTime(day, 'start', minutes)}
                       aria-label={t('dashboard.availability.startLabel', { day: dayName })}
-                      className={TIME_BOX}
                     />
                     <span aria-hidden="true" className="font-sans text-body leading-ui text-muted">
                       –
                     </span>
-                    <input
-                      type="time"
-                      step={900}
-                      value={toTimeValue(window.end)}
-                      onChange={(event) => setDayTime(day, 'end', event.target.value)}
+                    <TimeField
+                      value={hours.end}
+                      onChange={(minutes) => setDayTime(day, 'end', minutes)}
                       aria-label={t('dashboard.availability.endLabel', { day: dayName })}
-                      className={TIME_BOX}
                     />
                   </div>
                 ) : (
@@ -317,6 +301,3 @@ export const WorkingHoursForm: React.FC<WorkingHoursFormProps> = ({ pubkey, sign
     </form>
   );
 };
-
-const TIME_BOX =
-  'rounded-control border border-line bg-paper px-3.5 py-[9px] font-mono text-ui leading-ui font-medium text-ink focus:border-ink focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
