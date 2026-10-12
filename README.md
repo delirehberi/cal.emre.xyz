@@ -1,4 +1,4 @@
-# cal.emre.xyz — Sovereign Nostr Scheduling System
+# Kün — Sovereign Nostr Scheduling
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
@@ -6,13 +6,24 @@
 [![Nostr NIP-52](https://img.shields.io/badge/Nostr-NIP--52-8A2BE2)](https://github.com/nostr-protocol/nips/blob/master/52.md)
 [![Tests: Vitest](https://img.shields.io/badge/Tests-Passing-brightgreen?logo=vitest)](https://vitest.dev/)
 
-An open-source, decentralized calendar and appointment booking platform built on the [Nostr](https://nostr.com) protocol ([NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md)). Deployable globally to Cloudflare Workers with zero database dependencies.
+Kün is an open-source, decentralized calendar and appointment booking tool built on the [Nostr](https://nostr.com) protocol ([NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md)). No accounts and no middleman: bookings are signed with your own key and live on relays. Deployable globally to Cloudflare Workers with zero database dependencies. The reference deployment runs at [cal.emre.xyz](https://cal.emre.xyz).
+
+![Kün booking page](docs/screenshots/booking-light.png)
+
+| Dashboard: appointments | Dashboard: availability |
+|---|---|
+| ![Appointments](docs/screenshots/dashboard-appointments.png) | ![Availability](docs/screenshots/dashboard-availability.png) |
+
+| Dark theme | Mobile |
+|---|---|
+| ![Dark theme](docs/screenshots/booking-dark.png) | ![Mobile booking page](docs/screenshots/booking-mobile.png) |
 
 ---
 
 ## 🌟 Key Features
 
-- ⚡ **Decentralized & Relay-Native**: Relays are the single source of truth. Appointments, availability, and RSVPs are published as cryptographic Nostr events.
+- ⚡ **Decentralized & Relay-Native**: Relays are the single source of truth. Appointments, availability, and RSVPs are published as cryptographic Nostr events. A host's working hours, offered meeting lengths, gap and minimum notice are published from the dashboard as a NIP-78 event and read by the booking page.
+- 🔒 **Private by default**: Booking details (name, email, notes) are encrypted with NIP-44 for the host and for every invited npub; a public option is available per booking.
 - 🛡️ **Dynamic Collision Prevention Algorithm**: Reads host events (Kind `31923`) and accepted RSVPs (Kind `31925`) in real-time, calculating occupied timespans and strictly blocking double bookings.
 - 🔑 **Sovereign Identity & 1-Click Guest Onboarding**:
   - Sign in with NIP-07 browser extensions (Alby, nos2x), NIP-46 Bunker (Nostr Connect), or local private keys.
@@ -22,10 +33,11 @@ An open-source, decentralized calendar and appointment booking platform built on
   - Direct web add links for **Google Calendar**, **Apple Calendar**, and **Microsoft Outlook / Office 365**.
   - Direct Cloudflare Worker subscription endpoint (`/api/events/:naddr/ics`).
 - 🌐 **Internationalization (i18n)**:
-  - English (`en` default) and Turkish (`tr`) with automatic browser language detection and persistent selector.
-- 🎨 **Modern Responsive UI & Theming**:
-  - Clean light-mode default with a seamless dark-mode toggle.
+  - English (`en`, the default) and Turkish (`tr`) with a persistent EN/TR switch.
+- 🎨 **Responsive UI & Theming**:
+  - The Kün design: light by default with a dark toggle, three breakpoints (below 640 px, 640–1023 px, 1024 px and up), self-hosted fonts and semantic design tokens.
   - Built with React 19, Tailwind CSS v4, and Lucide icons.
+- 🧭 **Hash routing**: `/#/` is the default host, `/#/name@domain.com` or `/#/npub1…` is any host's booking page, `/#/dashboard` is the host dashboard and `/#/about` explains the project and how to self-host it.
 - 📧 **Optional Transactional Emailing**:
   - Powered by [Resend](https://resend.com) with `.ics` calendar attachments.
   - Disabled by default (`ENABLE_EMAIL_NOTIFICATIONS=false`) for sovereign zero-backend setups.
@@ -39,7 +51,7 @@ An open-source, decentralized calendar and appointment booking platform built on
 ```mermaid
 flowchart TD
     subgraph Client ["Client Browser (React 19 + Tailwind v4)"]
-        UI[Two-Column Booking Page]
+        UI[Booking Page & Dashboard]
         Slots[Dynamic Timespan Collision Math]
         Auth[Signer: NIP-07 / NIP-46 / Local Key]
         ICS[RFC 5545 ICS Generator]
@@ -73,6 +85,8 @@ flowchart TD
 | NIP | Description | Implementation Details |
 |---|---|---|
 | **[NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md)** | Calendar Events | Kind `31923` (Time-based), Kind `31922` (Date-based), Kind `31925` (RSVPs with `busy`/`free` free-busy tags), Kind `31924` (Calendar Collections) |
+| **[NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md)** | Versioned Encryption | Booking details are encrypted for the host and each invited npub (`enc` tags) |
+| **[NIP-78](https://github.com/nostr-protocol/nips/blob/master/78.md)** | Application-specific Data | Kind `30078` (`d` = `kun/availability`) carries the host's published availability |
 | **[NIP-65](https://github.com/nostr-protocol/nips/blob/master/65.md)** | Relay List Metadata | Queries Kind `10002` and Kind `3` to dynamically discover host read/write outbox relays |
 | **[NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md)** | Browser Extension Signer | Signs events via `window.nostr` |
 | **[NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md)** | Nostr Connect / Bunker | Remote Bunker signing via relay transport |
@@ -104,7 +118,7 @@ make install
 ```bash
 make dev
 ```
-Open your browser at `http://localhost:5173`.
+Open your browser at the address Vite prints (`http://localhost:3000` by default).
 
 ---
 
@@ -130,7 +144,7 @@ cp .env.example .dev.vars
 
 ## 🧪 Testing & Code Quality
 
-The project maintains 100% test pass rates and strict TypeScript compilation:
+The project maintains 100% test pass rates and strict TypeScript compilation. Tests cover the protocol and calendar logic, the UI primitives, keyboard behaviour, i18n key parity (EN/TR) and WCAG AA contrast of the design tokens:
 
 ```bash
 # Run unit and integration tests (Vitest)
