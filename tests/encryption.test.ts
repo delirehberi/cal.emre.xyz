@@ -4,7 +4,11 @@ import { PrivateKeySigner } from '../src/client/lib/nostr/signer';
 import {
   encryptBookingDetails,
   decryptBookingDetails,
+  encryptBookingForRecipients,
+  buildPublicBookingContent,
+  findEncryptedCopy,
   isLikelyEncrypted,
+  ENCRYPTED_COPY_TAG,
 } from '../src/client/lib/nostr/encryption';
 
 describe('End-to-End Encryption for Host (NIP-44 / NIP-04)', () => {
@@ -107,5 +111,123 @@ describe('End-to-End Encryption for Host (NIP-44 / NIP-04)', () => {
       const unauthorized = await decryptBookingDetails(thirdPartySigner, attendeePubkey, ciphertext);
       expect(unauthorized).toBeNull();
     });
+  });
+});
+
+describe('Encryption for invited people', () => {
+  const hostSecret = generateSecretKey();
+  const hostPubkey = getPublicKey(hostSecret);
+  const hostSigner = new PrivateKeySigner(hostSecret);
+
+  const bookerSecret = generateSecretKey();
+  const bookerPubkey = getPublicKey(bookerSecret);
+  const bookerSigner = new PrivateKeySigner(bookerSecret);
+
+  const inviteeSecret = generateSecretKey();
+  const inviteePubkey = getPublicKey(inviteeSecret);
+  const inviteeSigner = new PrivateKeySigner(inviteeSecret);
+
+  const otherInviteeSecret = generateSecretKey();
+  const otherInviteePubkey = getPublicKey(otherInviteeSecret);
+  const otherInviteeSigner = new PrivateKeySigner(otherInviteeSecret);
+
+  const outsiderSigner = new PrivateKeySigner(generateSecretKey());
+
+  const details = {
+    name: 'Ayşe Demir',
+    notes: 'Gündem: yeni takvim tasarımı',
+    email: 'ayse@example.com',
+    title: 'Proje görüşmesi',
+    participants: ['mehmet@example.com'],
+  };
+
+  it('keeps the host copy in the content, readable exactly as before', async () => {
+    const { content } = await encryptBookingForRecipients(bookerSigner, hostPubkey, [inviteePubkey], details);
+    const read = await decryptBookingDetails(hostSigner, bookerPubkey, content);
+    expect(read).toMatchObject({ name: 'Ayşe Demir', title: 'Proje görüşmesi', email: 'ayse@example.com' });
+    expect(read?.participants).toEqual(['mehmet@example.com']);
+  });
+
+  it('adds one separate ciphertext tag per invited pubkey', async () => {
+    const { content, tags } = await encryptBookingForRecipients(
+      bookerSigner,
+      hostPubkey,
+      [inviteePubkey, otherInviteePubkey],
+      details
+    );
+    expect(tags.map((tag) => tag[0])).toEqual([ENCRYPTED_COPY_TAG, ENCRYPTED_COPY_TAG]);
+    expect(tags.map((tag) => tag[1])).toEqual([inviteePubkey, otherInviteePubkey]);
+    expect(new Set([content, tags[0][2], tags[1][2]]).size).toBe(3);
+  });
+
+  it('lets each invited person read their own copy and nobody else', async () => {
+    const { content, tags } = await encryptBookingForRecipients(
+      bookerSigner,
+      hostPubkey,
+      [inviteePubkey, otherInviteePubkey],
+      details
+    );
+
+    const asInvitee = await decryptBookingDetails(inviteeSigner, bookerPubkey, content, { tags, viewerPubkey: inviteePubkey });
+    expect(asInvitee?.name).toBe('Ayşe Demir');
+    expect(asInvitee?.notes).toBe('Gündem: yeni takvim tasarımı');
+
+    const asOther = await decryptBookingDetails(otherInviteeSigner, bookerPubkey, content, {
+      tags,
+      viewerPubkey: otherInviteePubkey,
+    });
+    expect(asOther?.title).toBe('Proje görüşmesi');
+
+    // Without the tags an invitee only sees the host's ciphertext, which they cannot open.
+    expect(await decryptBookingDetails(inviteeSigner, bookerPubkey, content)).toBeNull();
+    // A person who was not invited has no copy and cannot open the host's.
+    expect(
+      await decryptBookingDetails(outsiderSigner, bookerPubkey, content, { tags, viewerPubkey: await outsiderSigner.getPublicKey() })
+    ).toBeNull();
+  });
+
+  it('does not let one invitee open another invitee copy', async () => {
+    const { tags } = await encryptBookingForRecipients(bookerSigner, hostPubkey, [inviteePubkey, otherInviteePubkey], details);
+    const copyForOther = findEncryptedCopy(tags, otherInviteePubkey)!;
+    expect(await decryptBookingDetails(inviteeSigner, bookerPubkey, copyForOther)).toBeNull();
+  });
+
+  it('skips the host and the author as invitees and removes duplicates', async () => {
+    const { tags } = await encryptBookingForRecipients(
+      bookerSigner,
+      hostPubkey,
+      [hostPubkey, bookerPubkey, inviteePubkey, inviteePubkey.toUpperCase()],
+      details
+    );
+    expect(tags).toHaveLength(1);
+    expect(tags[0][1]).toBe(inviteePubkey);
+  });
+
+  it('adds no tags when nobody is invited', async () => {
+    const { tags } = await encryptBookingForRecipients(bookerSigner, hostPubkey, [], details);
+    expect(tags).toEqual([]);
+  });
+
+  it('refuses to encrypt with a signer that cannot encrypt', async () => {
+    const noEncrypt = { type: 'privateKey', getPublicKey: async () => bookerPubkey, signEvent: async () => { throw new Error('unused'); } };
+    await expect(
+      encryptBookingForRecipients(noEncrypt as unknown as PrivateKeySigner, hostPubkey, [inviteePubkey], details)
+    ).rejects.toThrow(/does not support encryption/);
+  });
+
+  it('finds the copy for a viewer case-insensitively and returns null when there is none', () => {
+    const tags = [['p', 'x'], [ENCRYPTED_COPY_TAG, inviteePubkey, 'cipher']];
+    expect(findEncryptedCopy(tags, inviteePubkey.toUpperCase())).toBe('cipher');
+    expect(findEncryptedCopy(tags, otherInviteePubkey)).toBeNull();
+    expect(findEncryptedCopy(undefined, inviteePubkey)).toBeNull();
+  });
+
+  it('builds public content that anyone can read and that never contains the e-mail', async () => {
+    const content = buildPublicBookingContent(details);
+    expect(isLikelyEncrypted(content)).toBe(false);
+    expect(content).not.toContain('ayse@example.com');
+    const read = await decryptBookingDetails(outsiderSigner, bookerPubkey, content);
+    expect(read).toMatchObject({ name: 'Ayşe Demir', title: 'Proje görüşmesi', notes: 'Gündem: yeni takvim tasarımı' });
+    expect(read?.email).toBeUndefined();
   });
 });

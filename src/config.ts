@@ -23,7 +23,9 @@ export const APP_CONFIG = {
     'wss://relay.primal.net',
     'wss://nostr.mom',
   ] as const,
-  allowedDurationsMinutes: [15, 30, 60] as const,
+  allowedDurationsMinutes: [15, 30, 45, 60] as const,
+  /** Offered behind the "longer…" chip on the booking page. */
+  extendedDurationsMinutes: [90, 120] as const,
   defaultDurationMinutes: 30,
   defaultWorkingHours: {
     startHour: 9,

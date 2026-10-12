@@ -88,6 +88,8 @@ export function createTimeCalendarEventTemplate(params: {
   hashtags?: string[];
   attendees?: CalendarAttendee[];
   content?: string;
+  /** Additional tags appended as they are (e.g. encrypted copies for invitees). */
+  extraTags?: string[][];
 }): EventTemplate {
   if (!params.identifier.trim()) {
     throw new Error('Time calendar event must have a valid identifier (d-tag)');
@@ -148,6 +150,10 @@ export function createTimeCalendarEventTemplate(params: {
       }
       tags.push(pTag);
     }
+  }
+
+  if (params.extraTags) {
+    tags.push(...params.extraTags);
   }
 
   return {

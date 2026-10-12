@@ -72,10 +72,12 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
 
       setDecryptingIds((prev) => ({ ...prev, [coord]: true }));
       try {
+        // The details are encrypted by whoever signed the booking event, so that is the sender.
         const attendee =
           appointment.event.attendees.find((a) => a.pubkey !== pubkey) ||
           appointment.event.attendees[0];
-        const senderPubkey = attendee?.pubkey || appointment.event.pubkey || pubkey;
+        const author = appointment.event.pubkey && appointment.event.pubkey !== pubkey ? appointment.event.pubkey : undefined;
+        const senderPubkey = author || attendee?.pubkey || pubkey;
         const decrypted = await decryptBookingDetails(signer, senderPubkey, appointment.event.content);
         if (decrypted) {
           setDecryptedMap((prev) => ({ ...prev, [coord]: decrypted }));
