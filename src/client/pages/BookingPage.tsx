@@ -113,9 +113,26 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
     }
   });
 
+  // Availability the host published to relays (NIP-78); preferred over the local copy
+  const [publishedHours, setPublishedHours] = useState<WorkingHoursConfig | null>(null);
+
   const workingHours: WorkingHoursConfig = useMemo(() => {
-    return getHostWorkingHours(hostPubkey || undefined);
-  }, [hostPubkey]);
+    return publishedHours ?? getHostWorkingHours(hostPubkey || undefined);
+  }, [publishedHours, hostPubkey]);
+
+  const offeredDurations = workingHours.durations;
+  const durationOptions = offeredDurations ?? APP_CONFIG.allowedDurationsMinutes;
+  const extendedDurationOptions = offeredDurations ? [] : APP_CONFIG.extendedDurationsMinutes;
+
+  useEffect(() => {
+    const available = [...durationOptions, ...extendedDurationOptions];
+    if (!available.includes(selectedDuration)) {
+      const preferred = workingHours.defaultDuration;
+      setSelectedDuration(
+        preferred && available.includes(preferred) ? preferred : (available[0] ?? APP_CONFIG.defaultDurationMinutes)
+      );
+    }
+  }, [durationOptions, extendedDurationOptions, selectedDuration, workingHours.defaultDuration]);
 
   // Resolve host identifier to pubkey & load profile + busy intervals
   useEffect(() => {
@@ -163,6 +180,12 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
         setHostRelays(relayList.all);
         if (profile) {
           setHostProfile(profile);
+        }
+
+        const availability = await nostrPool.fetchHostAvailability(pubkey, relayList.read);
+        if (isCancelled) return;
+        if (availability) {
+          setPublishedHours(availability);
         }
 
         // Fetch Kind 31923 calendar events and Kind 31925 RSVPs
@@ -371,8 +394,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
 
           <div className="tablet:col-start-1 tablet:row-start-2">
             <DurationPicker
-              durations={APP_CONFIG.allowedDurationsMinutes}
-              extendedDurations={APP_CONFIG.extendedDurationsMinutes}
+              durations={durationOptions}
+              extendedDurations={extendedDurationOptions}
               selectedDuration={selectedDuration}
               onSelectDuration={handleSelectDuration}
             />

@@ -11,6 +11,8 @@ import {
 } from './nip52';
 
 import { hostDataCache } from './cache';
+import { AVAILABILITY_IDENTIFIER, AVAILABILITY_KIND, parseAvailabilityEvent } from './availability';
+import type { WorkingHoursConfig } from '../calendar/slots';
 
 export interface HostProfile {
   pubkey: string;
@@ -341,6 +343,32 @@ class RelayPoolManager {
     return appointments.sort((a, b) => a.event.start - b.event.start);
   }
 
+
+  /**
+   * Fetches the host's published availability (NIP-78, kind 30078). Newest valid event wins.
+   */
+  async fetchHostAvailability(
+    pubkey: string,
+    relays?: string[]
+  ): Promise<WorkingHoursConfig | null> {
+    const queryRelays = this.getBootstrapRelays(relays);
+    try {
+      const events = await this.pool.querySync(queryRelays, {
+        kinds: [AVAILABILITY_KIND],
+        authors: [pubkey],
+        '#d': [AVAILABILITY_IDENTIFIER],
+        limit: 5,
+      });
+      const newestFirst = [...events].sort((a, b) => b.created_at - a.created_at);
+      for (const event of newestFirst) {
+        const parsed = parseAvailabilityEvent(event);
+        if (parsed) return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
 
   /**
    * Publishes a signed Nostr event to multiple relays in parallel.

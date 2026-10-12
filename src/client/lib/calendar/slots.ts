@@ -15,7 +15,98 @@ export interface WorkingHoursConfig {
   location?: string;
   /** Default meeting duration in minutes */
   defaultDuration?: number;
+  /** Per-weekday hour overrides in minutes from midnight; days without an entry use startHour/endHour */
+  dayHours?: Record<number, DayHours>;
+  /** Meeting durations (minutes) the host offers; undefined means the app defaults */
+  durations?: number[];
+  /** Minimum notice in minutes before a booking can start */
+  minNoticeMinutes?: number;
 }
+
+export interface DayHours {
+  /** Opening time in minutes from midnight (0-1439) */
+  start: number;
+  /** Closing time in minutes from midnight (1-1440), later than start */
+  end: number;
+}
+
+/**
+ * Resolves the opening interval for a weekday, or null when the host is not available that day.
+ */
+export function resolveDayHours(config: WorkingHoursConfig, dayOfWeek: number): DayHours | null {
+  if (!config.workingDays.includes(dayOfWeek)) return null;
+  const override = config.dayHours?.[dayOfWeek];
+  if (override && override.end > override.start) {
+    return {
+      start: Math.max(0, Math.min(1439, override.start)),
+      end: Math.max(1, Math.min(1440, override.end)),
+    };
+  }
+  const startHour = Math.max(0, Math.min(23, config.startHour));
+  const endHour = Math.max(startHour + 1, Math.min(24, config.endHour));
+  return { start: startHour * 60, end: endHour * 60 };
+}
+
+/**
+ * Validates untrusted working-hours data (storage or relay content) into a complete config.
+ */
+export function normalizeWorkingHours(
+  input: Partial<WorkingHoursConfig> | null | undefined,
+  defaults: WorkingHoursConfig
+): WorkingHoursConfig {
+  const parsed = input ?? {};
+  const isMinute = (n: unknown, min: number, max: number): n is number =>
+    typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
+
+  const dayHours: Record<number, DayHours> = {};
+  if (parsed.dayHours && typeof parsed.dayHours === 'object') {
+    for (const [key, value] of Object.entries(parsed.dayHours)) {
+      const day = Number(key);
+      if (
+        Number.isInteger(day) &&
+        day >= 0 &&
+        day <= 6 &&
+        value &&
+        isMinute(value.start, 0, 1439) &&
+        isMinute(value.end, 1, 1440) &&
+        value.end > value.start
+      ) {
+        dayHours[day] = { start: value.start, end: value.end };
+      }
+    }
+  }
+
+  const durations = Array.isArray(parsed.durations)
+    ? Array.from(new Set(parsed.durations.filter((d) => isMinute(d, 5, 480)))).sort((a, b) => a - b)
+    : [];
+
+  return {
+    startHour: isMinute(parsed.startHour, 0, 23) ? parsed.startHour : defaults.startHour,
+    endHour: isMinute(parsed.endHour, 1, 24) ? parsed.endHour : defaults.endHour,
+    workingDays: Array.isArray(parsed.workingDays)
+      ? Array.from(new Set(parsed.workingDays.filter((d) => isMinute(d, 0, 6)))).sort((a, b) => a - b)
+      : defaults.workingDays,
+    timezone: typeof parsed.timezone === 'string' && parsed.timezone ? parsed.timezone : defaults.timezone,
+    bufferMinutes: isMinute(parsed.bufferMinutes, 0, 240) ? parsed.bufferMinutes : defaults.bufferMinutes,
+    location: typeof parsed.location === 'string' ? parsed.location : defaults.location,
+    defaultDuration: isMinute(parsed.defaultDuration, 5, 480) ? parsed.defaultDuration : defaults.defaultDuration,
+    dayHours: Object.keys(dayHours).length > 0 ? dayHours : defaults.dayHours,
+    durations: durations.length > 0 ? durations : defaults.durations,
+    minNoticeMinutes: isMinute(parsed.minNoticeMinutes, 0, 60 * 24 * 90)
+      ? parsed.minNoticeMinutes
+      : defaults.minNoticeMinutes,
+  };
+}
+
+export const DEFAULT_WORKING_HOURS: WorkingHoursConfig = {
+  startHour: 9,
+  endHour: 17,
+  workingDays: [1, 2, 3, 4, 5],
+  timezone: 'UTC',
+  bufferMinutes: 5,
+  defaultDuration: 30,
+  location: '',
+};
 
 export const STORAGE_WORKING_HOURS_PREFIX = 'cal_working_hours_';
 
@@ -23,15 +114,7 @@ export const STORAGE_WORKING_HOURS_PREFIX = 'cal_working_hours_';
  * Loads host working hours from storage with fallback to default config.
  */
 export function getHostWorkingHours(pubkey?: string): WorkingHoursConfig {
-  const defaults: WorkingHoursConfig = {
-    startHour: 9,
-    endHour: 17,
-    workingDays: [1, 2, 3, 4, 5],
-    timezone: 'UTC',
-    bufferMinutes: 5,
-    defaultDuration: 30,
-    location: '',
-  };
+  const defaults = DEFAULT_WORKING_HOURS;
 
   if (!pubkey) {
     return defaults;
@@ -49,16 +132,7 @@ export function getHostWorkingHours(pubkey?: string): WorkingHoursConfig {
 
     const raw = storage.getItem(`${STORAGE_WORKING_HOURS_PREFIX}${pubkey}`);
     if (!raw) return defaults;
-    const parsed = JSON.parse(raw) as Partial<WorkingHoursConfig>;
-    return {
-      startHour: typeof parsed.startHour === 'number' ? parsed.startHour : defaults.startHour,
-      endHour: typeof parsed.endHour === 'number' ? parsed.endHour : defaults.endHour,
-      workingDays: Array.isArray(parsed.workingDays) ? parsed.workingDays : defaults.workingDays,
-      timezone: typeof parsed.timezone === 'string' && parsed.timezone ? parsed.timezone : defaults.timezone,
-      bufferMinutes: typeof parsed.bufferMinutes === 'number' ? parsed.bufferMinutes : defaults.bufferMinutes,
-      location: typeof parsed.location === 'string' ? parsed.location : defaults.location,
-      defaultDuration: typeof parsed.defaultDuration === 'number' ? parsed.defaultDuration : defaults.defaultDuration,
-    };
+    return normalizeWorkingHours(JSON.parse(raw) as Partial<WorkingHoursConfig>, defaults);
   } catch {
     return defaults;
   }
@@ -398,7 +472,7 @@ export function generateDailyTimeSlots(params: DailySlotsParams): TimeSlot[] {
     busyIntervals = [],
     attendeeTimezone = workingHours.timezone || 'UTC',
     currentTimestamp = Math.floor(Date.now() / 1000),
-    minLeadTimeMinutes = 15,
+    minLeadTimeMinutes = workingHours.minNoticeMinutes ?? 15,
   } = params;
 
   if (durationMinutes <= 0) {
@@ -411,21 +485,20 @@ export function generateDailyTimeSlots(params: DailySlotsParams): TimeSlot[] {
 
   // Verify whether the date falls on a host working day
   const dayOfWeek = getDayOfWeekInTimezone(dateKey, hostTimezone);
-  if (!workingHours.workingDays.includes(dayOfWeek)) {
+  const dayHours = resolveDayHours(workingHours, dayOfWeek);
+  if (!dayHours) {
     return [];
   }
 
   const slots: TimeSlot[] = [];
-  const startHour = Math.max(0, Math.min(23, workingHours.startHour));
-  const endHour = Math.max(startHour + 1, Math.min(24, workingHours.endHour));
-
-  const totalWorkingMinutes = (endHour - startHour) * 60;
+  const totalWorkingMinutes = dayHours.end - dayHours.start;
   const minLeadTimeSeconds = minLeadTimeMinutes * 60;
   const effectiveCutoffTime = currentTimestamp + minLeadTimeSeconds;
 
   for (let offsetMinutes = 0; offsetMinutes + durationMinutes <= totalWorkingMinutes; offsetMinutes += durationMinutes) {
-    const slotStartHour = startHour + Math.floor(offsetMinutes / 60);
-    const slotStartMinute = offsetMinutes % 60;
+    const slotStartMinuteOfDay = dayHours.start + offsetMinutes;
+    const slotStartHour = Math.floor(slotStartMinuteOfDay / 60);
+    const slotStartMinute = slotStartMinuteOfDay % 60;
 
     const slotStartTimestamp = localTimeToUtcTimestamp(
       dateKey,
