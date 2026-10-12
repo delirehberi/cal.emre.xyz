@@ -1,217 +1,170 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { Link2, LogIn, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Tabs, getPanelId, getTabId } from '../components/ui/Tabs';
 import { LoginModal } from '../components/auth/LoginModal';
 import { WorkingHoursForm } from '../components/dashboard/WorkingHoursForm';
 import { BookedEventsList } from '../components/dashboard/BookedEventsList';
+import { getDisplayName } from '../components/layout/UserMenu';
 import { getHostWorkingHours } from '../lib/calendar/slots';
-import {
-  LayoutDashboard,
-  Clock,
-  CalendarCheck,
-  Link,
-  Copy,
-  Check,
-  ExternalLink,
-  LogIn,
-  ShieldAlert,
-} from 'lucide-react';
+import { computeAppointmentStats } from '../lib/dashboard/stats';
+import { useHostAppointments } from '../lib/dashboard/useHostAppointments';
+
+type DashboardTab = 'availability' | 'appointments';
+
+const TABS_ID = 'dashboard';
+
+const StatCard: React.FC<{ label: string; value: number; sub: string }> = ({ label, value, sub }) => (
+  <div className="flex min-w-0 flex-col gap-1.5 rounded-card border border-line bg-card p-[22px]">
+    <p className="font-sans text-ui leading-ui font-medium text-muted">{label}</p>
+    <p className="font-display text-stat font-extrabold text-ink">{value}</p>
+    <p className="font-sans text-caption leading-ui text-muted">{sub}</p>
+  </div>
+);
 
 export const DashboardPage: React.FC = () => {
   const { user, signer, isLoggedIn } = useAuth();
   const { t } = useTranslation();
 
-  const [activeTab, setActiveTab] = useState<'availability' | 'appointments'>('availability');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('availability');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const hostWorkingHours = user?.pubkey ? getHostWorkingHours(user.pubkey) : getHostWorkingHours();
-
-  // Public booking link for the host
-  const hostIdentifier = user?.nip05 || user?.npub;
-  const bookingUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/#/${hostIdentifier || ''}`
-    : `https://cal.emre.xyz/#/${hostIdentifier || ''}`;
-
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(bookingUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch {
-      // Fallback
-    }
-  };
+  const { appointments, setAppointments, isLoading, error, reload } = useHostAppointments(user?.pubkey);
 
   if (!isLoggedIn || !user) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-16 sm:px-6">
-        <Card className="text-center space-y-6 py-10">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 shadow-xs">
-            <ShieldAlert className="h-7 w-7 text-amber-500" />
-          </div>
-
+      <div className="mx-auto max-w-xl px-4 py-16 tablet:px-6">
+        <Card className="space-y-6 py-10 text-center">
+          <span
+            aria-hidden="true"
+            className="mx-auto flex h-14 w-14 items-center justify-center rounded-field bg-line text-ink"
+          >
+            <ShieldAlert className="h-7 w-7" />
+          </span>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-              {t('dashboard.unauthenticated.title')}
-            </h2>
-            <p className="text-xs text-stone-600 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
+            <h1 className="font-display text-heading-m font-bold text-ink">{t('dashboard.unauthenticated.title')}</h1>
+            <p className="mx-auto max-w-md font-sans text-ui leading-ui text-muted">
               {t('dashboard.unauthenticated.description')}
             </p>
           </div>
-
-          <div className="pt-2">
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setIsLoginModalOpen(true)}
-              leftIcon={<LogIn className="h-4 w-4" />}
-            >
-              {t('dashboard.unauthenticated.loginButton')}
-            </Button>
-          </div>
+          <Button size="md" onClick={() => setIsLoginModalOpen(true)} leftIcon={<LogIn aria-hidden="true" className="h-4 w-4" />}>
+            {t('dashboard.unauthenticated.loginButton')}
+          </Button>
         </Card>
-
-        <LoginModal
-          isOpen={isLoginModalOpen}
-          onClose={() => setIsLoginModalOpen(false)}
-        />
+        <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
       </div>
     );
   }
 
+  const hostTimezone = getHostWorkingHours(user.pubkey).timezone;
+  const stats = computeAppointmentStats(appointments, Math.floor(Date.now() / 1000), hostTimezone);
+
+  const identifier = user.nip05 || user.npub;
+  const bookingUrl = `${window.location.origin}/#/${identifier}`;
+  const displayUrl = `${window.location.host}/#/${identifier}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(bookingUrl);
+      setCopied(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const monthSub =
+    stats.monthDelta === 0
+      ? t('dashboard.stats.monthSubSame')
+      : stats.monthDelta > 0
+        ? t('dashboard.stats.monthSubUp', { count: stats.monthDelta })
+        : t('dashboard.stats.monthSubDown', { count: Math.abs(stats.monthDelta) });
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100 flex items-center gap-2.5">
-            <LayoutDashboard className="h-6 w-6 text-stone-800 dark:text-stone-200" />
-            {t('dashboard.title')}
-          </h1>
-          <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-            {t('dashboard.subtitle')}
-          </p>
-        </div>
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-7 px-4 pt-6 pb-8 tablet:px-8 tablet:pt-12 tablet:pb-[72px] desktop:px-20">
+      <header className="flex flex-col gap-2">
+        <p className="font-mono text-label leading-ui font-medium text-muted uppercase">{t('dashboard.eyebrow')}</p>
+        <h1 className="font-display text-display-s font-extrabold break-words text-ink tablet:text-display-ml">
+          {t('dashboard.greeting', { name: getDisplayName(user) })}
+        </h1>
+      </header>
 
-        {/* Host Identity Badge */}
-        <div className="flex items-center gap-2.5 rounded-xl border border-stone-200 bg-stone-50/70 p-2.5 dark:border-stone-800 dark:bg-stone-900/50">
-          {user.profile?.picture ? (
-            <img
-              src={user.profile.picture}
-              alt={user.profile.displayName || user.npub}
-              className="h-8 w-8 rounded-full object-cover bg-stone-200 dark:bg-stone-700"
-            />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-900 text-stone-50 dark:bg-stone-100 dark:text-stone-900 text-xs font-bold">
-              {(user.profile?.displayName || user.npub || 'U').slice(0, 1).toUpperCase()}
-            </div>
-          )}
-          <div className="flex flex-col text-left">
-            <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate max-w-[150px]">
-              {user.profile?.displayName || user.nip05 || 'Host'}
-            </span>
-            <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400 truncate max-w-[150px]">
-              {user.npub.slice(0, 10)}...{user.npub.slice(-4)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Shareable Public Booking Link Widget */}
-      <Card variant="flat" className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="space-y-0.5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-              <Link className="h-3.5 w-3.5 text-stone-500" />
-              {t('dashboard.shareLink.title')}
-            </h3>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400">
-              {t('dashboard.shareLink.description')}
-            </p>
-          </div>
-
-          {copiedLink && (
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <Check className="h-3.5 w-3.5" />
-              {t('dashboard.shareLink.copied')}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            readOnly
-            value={bookingUrl}
-            className="block w-full truncate rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-mono text-stone-800 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-200 select-all"
-          />
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleCopyLink}
-            leftIcon={
-              copiedLink ? (
-                <Check className="h-3.5 w-3.5 text-emerald-600" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )
-            }
+      <section
+        aria-label={t('dashboard.shareLink.label')}
+        className="flex flex-col gap-4 rounded-card border border-line bg-card p-5 tablet:flex-row tablet:items-center"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-3.5">
+          <span
+            aria-hidden="true"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-button bg-slot-soft text-ink"
           >
-            {copiedLink ? t('common.copied') : t('common.copy')}
+            <Link2 className="h-5 w-5" />
+          </span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="font-sans text-caption leading-ui text-muted">{t('dashboard.shareLink.label')}</p>
+            <p className="truncate font-mono text-body-l leading-ui font-medium text-ink">{displayUrl}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button size="md" onClick={() => void handleCopy()}>
+            {copied ? t('dashboard.shareLink.copied') : t('dashboard.shareLink.copy')}
           </Button>
           <a
             href={bookingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-lg border border-stone-200 bg-white p-2 text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-300 dark:hover:bg-stone-900 transition-colors"
-            title="Open booking page"
+            className="inline-flex items-center justify-center rounded-button border border-line bg-card px-5 py-3 font-sans text-body leading-ui font-semibold whitespace-nowrap text-ink transition-colors hover:border-muted"
           >
-            <ExternalLink className="h-4 w-4" />
+            {t('dashboard.shareLink.open')}
           </a>
         </div>
-      </Card>
+      </section>
 
-      {/* Main Tabs Navigation */}
-      <div className="flex border-b border-stone-200 dark:border-stone-800 gap-4">
-        <button
-          type="button"
-          onClick={() => setActiveTab('availability')}
-          className={`flex items-center gap-2 pb-3 text-sm font-semibold transition-all border-b-2 cursor-pointer ${
-            activeTab === 'availability'
-              ? 'border-stone-900 text-stone-900 dark:border-stone-100 dark:text-stone-100'
-              : 'border-transparent text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100'
-          }`}
-        >
-          <Clock className="h-4 w-4" />
-          <span>{t('dashboard.availabilityTab')}</span>
-        </button>
+      <section className="grid grid-cols-1 gap-5 tablet:grid-cols-3" aria-label={t('dashboard.eyebrow')}>
+        <StatCard
+          label={t('dashboard.stats.upcoming')}
+          value={stats.upcoming}
+          sub={t('dashboard.stats.upcomingSub', { count: stats.upcomingThisWeek })}
+        />
+        <StatCard label={t('dashboard.stats.pending')} value={stats.pending} sub={t('dashboard.stats.pendingSub')} />
+        <StatCard label={t('dashboard.stats.month')} value={stats.thisMonth} sub={monthSub} />
+      </section>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('appointments')}
-          className={`flex items-center gap-2 pb-3 text-sm font-semibold transition-all border-b-2 cursor-pointer ${
-            activeTab === 'appointments'
-              ? 'border-stone-900 text-stone-900 dark:border-stone-100 dark:text-stone-100'
-              : 'border-transparent text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100'
-          }`}
-        >
-          <CalendarCheck className="h-4 w-4" />
-          <span>{t('dashboard.appointmentsTab')}</span>
-        </button>
-      </div>
+      <Tabs<DashboardTab>
+        variant="underline"
+        idBase={TABS_ID}
+        label={t('dashboard.tabsLabel')}
+        value={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { value: 'availability', label: t('dashboard.availabilityTab') },
+          { value: 'appointments', label: t('dashboard.appointmentsTab') },
+        ]}
+      />
 
-      {/* Tab Content Panels */}
-      <div>
+      <div
+        role="tabpanel"
+        id={getPanelId(TABS_ID, activeTab)}
+        aria-labelledby={getTabId(TABS_ID, activeTab)}
+      >
         {activeTab === 'availability' ? (
-          <WorkingHoursForm pubkey={user.pubkey} />
+          <WorkingHoursForm pubkey={user.pubkey} signer={signer} />
         ) : (
           <BookedEventsList
             pubkey={user.pubkey}
             signer={signer}
-            hostTimezone={hostWorkingHours.timezone}
+            hostTimezone={hostTimezone}
+            appointments={appointments}
+            onAppointmentsChange={setAppointments}
+            isLoading={isLoading}
+            loadError={error}
+            onRefresh={() => void reload()}
           />
         )}
       </div>

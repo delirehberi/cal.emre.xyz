@@ -38,6 +38,8 @@ export interface TabsProps<T extends string> {
   label: string;
   /** Prefix for tab/panel ids; use `getTabId` / `getPanelId` with the same base on the panels. */
   idBase: string;
+  /** `segmented` is a boxed control; `underline` is a page-level tab bar with an ink underline. */
+  variant?: 'segmented' | 'underline';
   className?: string;
 }
 
@@ -45,7 +47,7 @@ export interface TabsProps<T extends string> {
  * Segmented tab list (WAI-ARIA tabs with automatic activation and a roving tabindex).
  * Render each panel with `role="tabpanel"`, `id={getPanelId(idBase, value)}` and `aria-labelledby={getTabId(idBase, value)}`.
  */
-export function Tabs<T extends string>({ items, value, onChange, label, idBase, className }: TabsProps<T>): React.ReactElement {
+export function Tabs<T extends string>({ items, value, onChange, label, idBase, variant = 'segmented', className }: TabsProps<T>): React.ReactElement {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -60,7 +62,12 @@ export function Tabs<T extends string>({ items, value, onChange, label, idBase, 
     <div
       role="tablist"
       aria-label={label}
-      className={cn('flex gap-1 rounded-button border border-line bg-paper p-1', className)}
+      className={cn(
+        variant === 'underline'
+          ? 'flex items-end overflow-x-auto shadow-[inset_0_-1px_0_0] shadow-line'
+          : 'flex gap-1 rounded-button border border-line bg-paper p-1',
+        className
+      )}
     >
       {items.map((item, index) => {
         const selected = item.value === value;
@@ -79,12 +86,19 @@ export function Tabs<T extends string>({ items, value, onChange, label, idBase, 
             onClick={() => onChange(item.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={cn(
-              'flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tab border py-[9px] font-sans text-caption leading-ui font-medium transition-colors',
-              selected ? 'border-line bg-card text-ink' : 'border-transparent text-muted hover:text-ink'
+              variant === 'underline'
+                ? [
+                    'flex shrink-0 cursor-pointer items-center justify-center gap-1.5 border-b-2 px-5 py-3.5 font-sans text-body leading-ui font-semibold whitespace-nowrap transition-colors',
+                    selected ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink',
+                  ]
+                : [
+                    'flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tab border py-[9px] font-sans text-caption leading-ui font-medium transition-colors',
+                    selected ? 'border-line bg-card text-ink' : 'border-transparent text-muted hover:text-ink',
+                  ]
             )}
           >
             {item.icon}
-            <span className="truncate">{item.label}</span>
+            <span className={variant === 'underline' ? undefined : 'truncate'}>{item.label}</span>
           </button>
         );
       })}

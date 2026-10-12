@@ -150,6 +150,18 @@
   --text-display-l: 44px;
   --text-display-l--line-height: 1.19;
   --text-display-l--letter-spacing: -0.02em;
+  --text-display-ml: 48px;
+  --text-display-ml--line-height: 1.19;
+  --text-display-ml--letter-spacing: -0.03em;
+  --text-stat: 56px;
+  --text-stat--line-height: 1.19;
+  --text-stat--letter-spacing: -0.03em;
+  --text-date: 28px;
+  --text-date--line-height: 1.19;
+  --text-date--letter-spacing: -0.02em;
+  --text-card-title: 19px;
+  --text-card-title--line-height: 1.2;
+  --text-card-title--letter-spacing: -0.01em;
   --text-heading-xl: 40px;
   --text-heading-xl--line-height: 1.1;
   --text-heading-xl--letter-spacing: -0.02em;
@@ -180,6 +192,9 @@
   --text-label: 12px;
   --text-label--line-height: 1.2;
   --text-label--letter-spacing: 0.08em;
+  --text-eyebrow: 11px;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.06em;
   --text-micro: 10px;
   --text-micro--line-height: 1.2;
   --text-micro--letter-spacing: 0.08em;

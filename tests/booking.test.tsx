@@ -23,6 +23,7 @@ const relays = vi.hoisted(() => ({
   fetchHostProfile: vi.fn(),
   fetchCalendarEvents: vi.fn(),
   fetchCalendarRSVPs: vi.fn(),
+  fetchHostAvailability: vi.fn(),
   queryNip05Pubkey: vi.fn(),
 }));
 
@@ -34,6 +35,7 @@ vi.mock('../src/client/lib/nostr/relays', () => ({
     fetchHostProfile: relays.fetchHostProfile,
     fetchCalendarEvents: relays.fetchCalendarEvents,
     fetchCalendarRSVPs: relays.fetchCalendarRSVPs,
+    fetchHostAvailability: relays.fetchHostAvailability,
   },
 }));
 vi.mock('../src/client/lib/nostr/keys', async (importOriginal) => ({
@@ -548,6 +550,7 @@ describe('BookingPage', () => {
     relays.fetchHostProfile.mockReset().mockResolvedValue({ pubkey: hostPubkey, displayName: 'delirehberi', nip05: 'delirehberi@emre.xyz', about: 'Builder.' });
     relays.fetchCalendarEvents.mockReset().mockResolvedValue({ timeEvents: [] });
     relays.fetchCalendarRSVPs.mockReset().mockResolvedValue([]);
+    relays.fetchHostAvailability.mockReset().mockResolvedValue(null);
   });
 
   it('shows the intro, the host and the three steps', async () => {
@@ -592,6 +595,32 @@ describe('BookingPage', () => {
     const times = within(screen.getByRole('group', { name: 'Open times' })).getAllByRole('button');
     expect(times).toHaveLength(8);
     expect(screen.getByText('Monday, March 4 · 60 min')).toBeTruthy();
+  });
+
+  it('uses the availability the host published to relays: offered lengths, hours and notice', async () => {
+    freezeDate('2030-03-04T08:00:00Z');
+    mockViewport(true);
+    relays.fetchHostAvailability.mockResolvedValue({
+      startHour: 9,
+      endHour: 17,
+      workingDays: [1],
+      dayHours: { 1: { start: 13 * 60, end: 15 * 60 } },
+      timezone: 'UTC',
+      bufferMinutes: 0,
+      durations: [45, 60],
+      defaultDuration: 45,
+      minNoticeMinutes: 6 * 60,
+    });
+    await renderPage();
+    await waitFor(() => expect(screen.getByRole('radio', { name: '45 min' }).getAttribute('aria-checked')).toBe('true'));
+    expect(screen.queryByRole('radio', { name: '30 min' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /longer/i })).toBeNull();
+    const times = within(screen.getByRole('group', { name: 'Open times' })).getAllByRole('button').map((b) => b.textContent);
+    // 13:00-15:00 in 45 minute steps. Today's 13:00 and 13:45 start before 08:00 plus 6 hours of notice,
+    // so the page moves on to the next Monday where both are open.
+    expect(screen.getByText('Monday, March 11 · 45 min')).toBeTruthy();
+    expect(times).toEqual(['13:00', '13:45']);
+    expect(relays.fetchHostAvailability).toHaveBeenCalledWith(hostPubkey, ['wss://r']);
   });
 
   it('blocks a slot that collides with a busy event from the host calendar', async () => {
