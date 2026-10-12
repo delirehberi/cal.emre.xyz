@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Calendar, Sun, Moon, LogIn, User, Copy, Check, ExternalLink, LogOut, LayoutDashboard } from 'lucide-react';
+import { Sun, Moon, LogIn, User, Copy, Check, ExternalLink, LogOut, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useTranslation } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Dropdown, type DropdownItem } from '../ui/Dropdown';
 import { LoginModal } from '../auth/LoginModal';
+import { Lockup } from '../brand';
 import { APP_CONFIG } from '../../../config';
 
 export interface HeaderProps {
@@ -86,23 +87,15 @@ export const Header: React.FC<HeaderProps> = ({ currentPath = '/', onNavigate })
     <>
       <header className="sticky top-0 z-40 w-full border-b border-stone-200/80 bg-white/85 backdrop-blur-md dark:border-stone-800/80 dark:bg-stone-900/85 transition-colors">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          {/* Brand Logo */}
-          <div
+          {/* Brand lockup */}
+          <button
+            type="button"
             onClick={() => handleNavClick('/')}
-            className="flex items-center gap-2.5 cursor-pointer select-none group"
+            aria-label={t('header.homeAria')}
+            className="cursor-pointer select-none rounded-control"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-stone-900 transition-transform group-hover:scale-105">
-              <Calendar className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-base font-bold tracking-tight text-stone-900 dark:text-stone-50">
-                cal.emre.xyz
-              </span>
-              <span className="text-[10px] -mt-1 font-mono text-stone-500 dark:text-stone-400">
-                NIP-52
-              </span>
-            </div>
-          </div>
+            <Lockup />
+          </button>
 
           {/* Navigation Links & Action Controls */}
           <div className="flex items-center gap-2 sm:gap-3">

@@ -26,6 +26,7 @@ export interface TranslationDictionary {
   header: {
     title: string;
     subtitle: string;
+    homeAria: string;
     home: string;
     dashboard: string;
     support: string;

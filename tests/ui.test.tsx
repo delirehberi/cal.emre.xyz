@@ -213,3 +213,47 @@ describe('Booking Components Rendering Tests', () => {
     expect(html).toContain('github.com');
   });
 });
+
+describe('Brand components', () => {
+  it('renders the lockup with an accessible Kün name and no domain or protocol text', async () => {
+    const { Lockup } = await import('../src/client/components/brand');
+    const html = renderToString(React.createElement(Lockup));
+    expect(html).toContain('aria-label="Kün"');
+    expect(html).not.toMatch(/cal\.emre\.xyz|NIP-52/i);
+    expect(html).toContain('>k<');
+    expect(html).toContain('>n<');
+  });
+
+  it('keeps the wordmark dots on the ü: one ink dot and one green dot', async () => {
+    const { Wordmark } = await import('../src/client/components/brand');
+    const html = renderToString(React.createElement(Wordmark));
+    expect(html.match(/bg-ink/g)).toHaveLength(1);
+    expect(html.match(/bg-slot/g)).toHaveLength(1);
+  });
+
+  it('draws the mark as a 3×3 grid with a larger green open-slot dot on the right of the middle row', async () => {
+    const { Mark } = await import('../src/client/components/brand');
+    const html = renderToString(React.createElement(Mark));
+    expect(html.match(/<circle/g)).toHaveLength(9);
+    expect(html).toContain('cx="46" cy="32" r="6.2"');
+    expect(html).toContain('fill-slot');
+    expect(html).toContain('aria-hidden="true"');
+  });
+
+  it('only exposes a mark name when a title is given', async () => {
+    const { Mark } = await import('../src/client/components/brand');
+    expect(renderToString(React.createElement(Mark, { title: 'Kün' }))).toContain('aria-label="Kün"');
+  });
+
+  it('sizes the lockup mark at 40 / 32 / 26 px and hides the wordmark below 320 px', async () => {
+    const { Lockup } = await import('../src/client/components/brand');
+    expect(renderToString(React.createElement(Lockup, { size: 'L' }))).toContain('[--mark:40px]');
+    expect(renderToString(React.createElement(Lockup, { size: 'M' }))).toContain('[--mark:32px]');
+    expect(renderToString(React.createElement(Lockup, { size: 'S' }))).toContain('[--mark:26px]');
+    const responsive = renderToString(React.createElement(Lockup));
+    expect(responsive).toContain('tablet:[--mark:32px]');
+    expect(responsive).toContain('desktop:[--mark:40px]');
+    expect(responsive).toContain('max-[319px]:hidden');
+    expect(renderToString(React.createElement(Lockup, { markOnly: true }))).not.toContain('>k<');
+  });
+});

@@ -22,6 +22,7 @@ export const tr: TranslationDictionary = {
   header: {
     title: 'cal.emre.xyz',
     subtitle: 'Nostr NIP-52 ile Egemen Randevu ve Takvim Sistemi',
+    homeAria: 'Kün, ana sayfaya git',
     home: 'Ana Sayfa',
     dashboard: 'Yönetim Paneli',
     support: 'Destek',

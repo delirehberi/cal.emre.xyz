@@ -22,6 +22,7 @@ export const en: TranslationDictionary = {
   header: {
     title: 'cal.emre.xyz',
     subtitle: 'Sovereign Scheduling with Nostr NIP-52',
+    homeAria: 'Kün, go to the home page',
     home: 'Home',
     dashboard: 'Dashboard',
     support: 'Support',
