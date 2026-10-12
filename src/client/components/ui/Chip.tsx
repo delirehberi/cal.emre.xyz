@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { clsx } from 'clsx';
+import { cn } from '../../lib/cn';
 
 export interface ChipProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'role'> {
   selected?: boolean;
@@ -13,7 +13,7 @@ export const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
       type={type}
       role="radio"
       aria-checked={selected}
-      className={clsx(
+      className={cn(
         'inline-flex cursor-pointer items-center justify-center rounded-full border px-[18px] py-2.5 font-sans text-body leading-ui font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50',
         selected ? 'border-ink bg-ink text-paper' : 'border-line bg-card text-ink hover:border-muted',
         className
@@ -90,7 +90,7 @@ export function ChipGroup<T extends string | number>({
   };
 
   return (
-    <div role="radiogroup" className={clsx('flex flex-wrap gap-2', className)} {...aria}>
+    <div role="radiogroup" className={cn('flex flex-wrap gap-2', className)} {...aria}>
       {options.map((option, index) => (
         <Chip
           key={String(option.value)}

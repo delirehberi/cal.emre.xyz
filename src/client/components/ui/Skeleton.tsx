@@ -1,33 +1,16 @@
 import React from 'react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '../../lib/cn';
 
 export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'text' | 'circular' | 'rectangular';
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({
-  className,
-  variant = 'rectangular',
-  ...props
-}) => {
-  const variantStyles = {
-    text: 'h-4 w-full rounded',
-    circular: 'rounded-full',
-    rectangular: 'rounded-lg',
-  };
+const VARIANT_STYLES = {
+  text: 'h-4 w-full rounded-control',
+  circular: 'rounded-full',
+  rectangular: 'rounded-button',
+} as const;
 
-  return (
-    <div
-      aria-hidden="true"
-      className={twMerge(
-        clsx(
-          'animate-pulse bg-stone-200 dark:bg-stone-800',
-          variantStyles[variant],
-          className
-        )
-      )}
-      {...props}
-    />
-  );
-};
+export const Skeleton: React.FC<SkeletonProps> = ({ className, variant = 'rectangular', ...props }) => (
+  <div aria-hidden="true" className={cn('animate-pulse bg-line', VARIANT_STYLES[variant], className)} {...props} />
+);

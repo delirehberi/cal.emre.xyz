@@ -211,6 +211,16 @@ describe('Booking Components Rendering Tests', () => {
     expect(html).toContain('z@emre.xyz');
     expect(html).toContain('Europe/Istanbul');
     expect(html).toContain('Building sovereign calendar');
+    expect(html).toContain('Calendar owner');
+    expect(html).toContain('>e<');
+  });
+
+  it('renders HostCard with the localized default bio when the profile has none', () => {
+    const html = renderToString(
+      wrapper({ children: <HostCard profile={null} nip05Identifier="alice@example.com" timezone="UTC" /> })
+    );
+    expect(html).toContain('alice');
+    expect(html).toContain('Pick a time that suits you');
   });
 
   it('renders DurationPicker with duration options', () => {
@@ -218,16 +228,38 @@ describe('Booking Components Rendering Tests', () => {
       wrapper({
         children: (
           <DurationPicker
-            durations={[15, 30, 60]}
+            durations={[15, 30, 45, 60]}
+            extendedDurations={[90, 120]}
             selectedDuration={30}
             onSelectDuration={() => {}}
           />
         ),
       })
     );
-    expect(html).toContain('15');
-    expect(html).toContain('30');
-    expect(html).toContain('60');
+    expect(html).toContain('15 min');
+    expect(html).toContain('30 min');
+    expect(html).toContain('45 min');
+    expect(html).toContain('60 min');
+    expect(html).toContain('longer…');
+    expect(html).not.toContain('90 min');
+    expect(html).toContain('role="radiogroup"');
+  });
+
+  it('keeps a chosen extended duration visible', () => {
+    const html = renderToString(
+      wrapper({
+        children: (
+          <DurationPicker
+            durations={[15, 30, 45, 60]}
+            extendedDurations={[90, 120]}
+            selectedDuration={90}
+            onSelectDuration={() => {}}
+          />
+        ),
+      })
+    );
+    expect(html).toContain('90 min');
+    expect(html).toContain('120 min');
   });
 
   it('renders DatePicker calendar header and days', () => {
@@ -246,6 +278,7 @@ describe('Booking Components Rendering Tests', () => {
       })
     );
     expect(html).toContain('September 2026');
+    expect(html).toContain('Green dot: that day has open time');
   });
 
   it('renders TimeSlotGrid with slot items', () => {
@@ -277,16 +310,21 @@ describe('Booking Components Rendering Tests', () => {
             selectedSlot={null}
             onSelectSlot={() => {}}
             attendeeTimezone="UTC"
+            hostTimezone="Europe/Istanbul"
             onTimezoneChange={() => {}}
             selectedDate="2026-09-15"
+            durationMinutes={30}
           />
         ),
       })
     );
     expect(html).toContain('10:00');
-    expect(html).toContain('10:30');
-    expect(html).toContain('select');
-    expect(html).toContain('Europe/Istanbul');
+    // Booked times are folded into one line instead of being listed.
+    expect(html).not.toContain('10:30');
+    expect(html).toContain('1 booked or past');
+    expect(html).toContain('Tuesday, September 15 · 30 min');
+    expect(html).toContain('<select');
+    expect(html).toContain('Europe/Istanbul (GMT+3)');
   });
 
   it('renders NostrEduBanner with educational link', () => {
@@ -296,6 +334,7 @@ describe('Booking Components Rendering Tests', () => {
       })
     );
     expect(html).toContain('nostr.com');
+    expect(html).toContain('A key is generated for you');
   });
 
   it('renders BookingSuccess with calendar export options', () => {
@@ -399,5 +438,15 @@ describe('cn class merging', () => {
     expect(cn('text-body', 'text-caption')).toBe('text-caption');
     expect(cn('rounded-card', 'rounded-hero')).toBe('rounded-hero');
     expect(cn('p-5', 'p-7')).toBe('p-7');
+  });
+});
+
+describe('ChipGroup layout override', () => {
+  it('lets a caller turn the group into display: contents', () => {
+    const html = renderToString(
+      <ChipGroup className="contents" aria-label="x" value={1} onChange={() => undefined} options={[{ value: 1, label: 'a' }]} />
+    );
+    expect(html).toContain('contents');
+    expect(html).not.toContain('class="flex flex-wrap');
   });
 });

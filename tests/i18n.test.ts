@@ -43,14 +43,15 @@ describe('i18n Dictionary Parity & Integrity', () => {
   });
 
   it('should replace dynamic template interpolation parameters', () => {
-    const durationEn = resolveTranslation(en, 'booking.durationPicker.minutesOption', { minutes: 30 });
-    expect(durationEn).toBe('30 mins');
-
-    const durationTr = resolveTranslation(tr, 'booking.durationPicker.minutesOption', { minutes: 30 });
-    expect(durationTr).toBe('30 dakika');
-
-    const timezoneEn = resolveTranslation(en, 'booking.timeSlotGrid.timezoneNotice', { timezone: 'Europe/Istanbul' });
-    expect(timezoneEn).toBe('Times displayed in your selected timezone (Europe/Istanbul)');
+    expect(resolveTranslation(en, 'booking.duration.minutes', { minutes: 30 })).toBe('30 min');
+    expect(resolveTranslation(tr, 'booking.duration.minutes', { minutes: 30 })).toBe('30 dk');
+    expect(
+      resolveTranslation(tr, 'booking.form.selectedTime', { dayMonth: '15 Ekim', weekday: 'Perşembe', start: '14:30', end: '15:00' })
+    ).toBe('15 Ekim, Perşembe · 14:30 – 15:00');
+    expect(
+      resolveTranslation(en, 'booking.form.selectedTime', { dayMonth: 'October 15', weekday: 'Thursday', start: '14:30', end: '15:00' })
+    ).toBe('Thursday, October 15 · 14:30 – 15:00');
+    expect(resolveTranslation(tr, 'booking.timeSlots.folded', { count: 11 })).toBe('11 saat dolu ya da geçmiş');
   });
 
   it('should return fallback key string if key path does not exist', () => {

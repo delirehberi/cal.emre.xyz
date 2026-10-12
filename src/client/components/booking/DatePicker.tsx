@@ -1,9 +1,18 @@
-import React, { useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
-import { Card } from '../ui/Card';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from '../../i18n';
+import { cn } from '../../lib/cn';
 import type { DayAvailabilitySummary } from '../../lib/calendar/slots';
 import { formatDateKey } from '../../lib/calendar/slots';
+import {
+  addDaysToDateKey,
+  formatMonthYear,
+  getDateParts,
+  getDaysInMonth,
+  getLeadingBlankCells,
+  toDateKey,
+} from '../../lib/calendar/format';
+import { StepCard } from './StepCard';
 
 export interface DatePickerProps {
   selectedDate: string; // 'YYYY-MM-DD'
@@ -14,6 +23,26 @@ export interface DatePickerProps {
   onMonthChange: (year: number, month: number) => void;
 }
 
+const NAV_BUTTON =
+  'flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line text-ink transition-colors hover:border-muted';
+
+/** Date key arrows and Page keys move to, or null when the key does not navigate. */
+export const getCalendarTarget = (dateKey: string, key: string): string | null => {
+  switch (key) {
+    case 'ArrowLeft':
+      return addDaysToDateKey(dateKey, -1);
+    case 'ArrowRight':
+      return addDaysToDateKey(dateKey, 1);
+    case 'ArrowUp':
+      return addDaysToDateKey(dateKey, -7);
+    case 'ArrowDown':
+      return addDaysToDateKey(dateKey, 7);
+    default:
+      return null;
+  }
+};
+
+/** Step 2: pick a day. Days with open time carry a green dot. */
 export const DatePicker: React.FC<DatePickerProps> = ({
   selectedDate,
   onSelectDate,
@@ -23,174 +52,131 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   onMonthChange,
 }) => {
   const { t, locale } = useTranslation();
-
   const todayKey = useMemo(() => formatDateKey(new Date()), []);
+  const cellRefs = useRef(new Map<string, HTMLButtonElement>());
+  const pendingFocus = useRef<string | null>(null);
 
-  const availabilityMap = useMemo(() => {
+  const availability = useMemo(() => {
     const map = new Map<string, DayAvailabilitySummary>();
-    for (const summary of availabilitySummaries) {
-      map.set(summary.date, summary);
-    }
+    for (const summary of availabilitySummaries) map.set(summary.date, summary);
     return map;
   }, [availabilitySummaries]);
 
-  const monthName = useMemo(() => {
-    const date = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
-    return new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'UTC',
-    }).format(date);
-  }, [currentYear, currentMonth, locale]);
+  const weekdays = t('booking.datePicker.weekdays').split(',');
+  const blanks = getLeadingBlankCells(currentYear, currentMonth);
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+  const days = Array.from({ length: daysInMonth }, (_, index) => toDateKey(currentYear, currentMonth, index + 1));
 
-  const weekDayHeaders = useMemo(() => {
-    // English or Turkish day headers
-    if (locale === 'tr') {
-      return ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
+  const hasSlots = (dateKey: string) => dateKey >= todayKey && (availability.get(dateKey)?.hasAvailableSlots ?? false);
+
+  // Exactly one day is in the tab order: the selected one, else the first open day, else the first day.
+  const tabStop = days.includes(selectedDate) ? selectedDate : (days.find(hasSlots) ?? days[0]);
+
+  useEffect(() => {
+    if (pendingFocus.current) {
+      cellRefs.current.get(pendingFocus.current)?.focus();
+      pendingFocus.current = null;
     }
-    return ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-  }, [locale]);
+  });
 
-  // Calendar matrix calculation
-  const calendarCells = useMemo(() => {
-    const firstDayOfMonth = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
-    const daysInMonth = new Date(Date.UTC(currentYear, currentMonth, 0)).getUTCDate();
-
-    // In Europe/ISO format, Monday is day 0, Sunday is day 6
-    // getUTCDay: 0 = Sun, 1 = Mon, ..., 6 = Sat
-    let firstDayIndex = firstDayOfMonth.getUTCDay() - 1;
-    if (firstDayIndex === -1) firstDayIndex = 6; // Sunday to end of week
-
-    const cells: Array<{ dateKey: string; dayNumber: number; isCurrentMonth: boolean }> = [];
-
-    // Leading empty days
-    for (let i = 0; i < firstDayIndex; i++) {
-      cells.push({ dateKey: '', dayNumber: 0, isCurrentMonth: false });
-    }
-
-    // Month days
-    for (let d = 1; d <= daysInMonth; d++) {
-      const formattedDay = String(d).padStart(2, '0');
-      const formattedMonth = String(currentMonth).padStart(2, '0');
-      const dateKey = `${currentYear}-${formattedMonth}-${formattedDay}`;
-      cells.push({ dateKey, dayNumber: d, isCurrentMonth: true });
-    }
-
-    return cells;
-  }, [currentYear, currentMonth]);
-
-  const handlePrevMonth = () => {
-    if (currentMonth === 1) {
-      onMonthChange(currentYear - 1, 12);
-    } else {
-      onMonthChange(currentYear, currentMonth - 1);
-    }
+  const changeMonth = (delta: number) => {
+    const next = new Date(Date.UTC(currentYear, currentMonth - 1 + delta, 1));
+    onMonthChange(next.getUTCFullYear(), next.getUTCMonth() + 1);
   };
 
-  const handleNextMonth = () => {
-    if (currentMonth === 12) {
-      onMonthChange(currentYear + 1, 1);
-    } else {
-      onMonthChange(currentYear, currentMonth + 1);
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, dateKey: string) => {
+    let target = getCalendarTarget(dateKey, event.key);
+    if (event.key === 'Home') target = addDaysToDateKey(dateKey, -((new Date(`${dateKey}T12:00:00Z`).getUTCDay() + 6) % 7));
+    if (event.key === 'End') target = addDaysToDateKey(dateKey, 6 - ((new Date(`${dateKey}T12:00:00Z`).getUTCDay() + 6) % 7));
+    if (event.key === 'PageUp' || event.key === 'PageDown') {
+      event.preventDefault();
+      const delta = event.key === 'PageUp' ? -1 : 1;
+      const [year, month, day] = dateKey.split('-').map(Number);
+      const moved = new Date(Date.UTC(year, month - 1 + delta, 1));
+      const last = getDaysInMonth(moved.getUTCFullYear(), moved.getUTCMonth() + 1);
+      pendingFocus.current = toDateKey(moved.getUTCFullYear(), moved.getUTCMonth() + 1, Math.min(day, last));
+      onMonthChange(moved.getUTCFullYear(), moved.getUTCMonth() + 1);
+      return;
     }
-  };
-
-  const handleTodayClick = () => {
-    const now = new Date();
-    const nowYear = now.getUTCFullYear();
-    const nowMonth = now.getUTCMonth() + 1;
-    onMonthChange(nowYear, nowMonth);
-    onSelectDate(todayKey);
+    if (!target) return;
+    event.preventDefault();
+    const [year, month] = target.split('-').map(Number);
+    if (year !== currentYear || month !== currentMonth) {
+      pendingFocus.current = target;
+      onMonthChange(year, month);
+    } else {
+      cellRefs.current.get(target)?.focus();
+    }
   };
 
   return (
-    <Card className="space-y-4">
-      {/* Month Navigation Header */}
+    <StepCard step={2} title={t('booking.steps.day')}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-4 w-4 text-stone-500" />
-          <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 capitalize">
-            {monthName}
-          </h3>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={handleTodayClick}
-            className="rounded-md px-2 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-          >
-            {t('booking.datePicker.today')}
+        <h3 aria-live="polite" className="font-display text-heading-xs font-bold text-ink capitalize">
+          {formatMonthYear(currentYear, currentMonth, locale)}
+        </h3>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => changeMonth(-1)} aria-label={t('booking.datePicker.previousMonth')} className={NAV_BUTTON}>
+            <ChevronLeft aria-hidden="true" className="h-[18px] w-[18px]" />
           </button>
-          <button
-            type="button"
-            onClick={handlePrevMonth}
-            aria-label={t('booking.datePicker.previousMonth')}
-            className="rounded-md p-1.5 text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={handleNextMonth}
-            aria-label={t('booking.datePicker.nextMonth')}
-            className="rounded-md p-1.5 text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-          >
-            <ChevronRight className="h-4 w-4" />
+          <button type="button" onClick={() => changeMonth(1)} aria-label={t('booking.datePicker.nextMonth')} className={NAV_BUTTON}>
+            <ChevronRight aria-hidden="true" className="h-[18px] w-[18px]" />
           </button>
         </div>
       </div>
 
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-1 text-center">
-        {weekDayHeaders.map((dayName, idx) => (
-          <span
-            key={`${dayName}-${idx}`}
-            className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 py-1"
-          >
-            {dayName}
+      <div aria-hidden="true" className="grid grid-cols-7 text-center">
+        {weekdays.map((name, index) => (
+          <span key={`${name}-${index}`} className="font-mono text-[11px] leading-ui font-medium text-muted">
+            {name}
           </span>
         ))}
       </div>
 
-      {/* Days Grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {calendarCells.map((cell, index) => {
-          if (!cell.isCurrentMonth) {
-            return <div key={`empty-${index}`} className="h-9 w-full" />;
-          }
-
-          const isSelected = selectedDate === cell.dateKey;
-          const isToday = todayKey === cell.dateKey;
-          const isPast = cell.dateKey < todayKey;
-          const availability = availabilityMap.get(cell.dateKey);
-          const hasSlots = availability?.hasAvailableSlots ?? false;
-          const isDisabled = isPast || !hasSlots;
+      <div role="group" aria-label={formatMonthYear(currentYear, currentMonth, locale)} className="grid grid-cols-7 gap-y-1">
+        {Array.from({ length: blanks }, (_, index) => (
+          <span key={`blank-${index}`} aria-hidden="true" className="h-[52px]" />
+        ))}
+        {days.map((dateKey) => {
+          const day = Number(dateKey.slice(8));
+          const free = hasSlots(dateKey);
+          const selected = dateKey === selectedDate;
+          const { weekday, dayMonth } = getDateParts(dateKey, locale);
+          const label = t(free ? 'booking.datePicker.dayAvailable' : 'booking.datePicker.dayUnavailable', {
+            date: `${weekday}, ${dayMonth}`,
+          });
 
           return (
             <button
-              key={cell.dateKey}
+              key={dateKey}
+              ref={(node) => {
+                if (node) cellRefs.current.set(dateKey, node);
+                else cellRefs.current.delete(dateKey);
+              }}
               type="button"
-              disabled={isDisabled}
-              onClick={() => onSelectDate(cell.dateKey)}
-              className={`group relative flex h-9 w-full flex-col items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                isSelected
-                  ? 'bg-stone-900 text-stone-50 font-bold shadow-xs dark:bg-stone-100 dark:text-stone-900 cursor-pointer'
-                  : isDisabled
-                  ? 'text-stone-300 dark:text-stone-700 cursor-not-allowed'
-                  : isToday
-                  ? 'border border-stone-400 text-stone-900 dark:border-stone-600 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer'
-                  : 'text-stone-700 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800 cursor-pointer'
-              }`}
-            >
-              <span>{cell.dayNumber}</span>
-              {hasSlots && !isPast && !isSelected && (
-                <span className="absolute bottom-1 h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+              aria-label={label}
+              aria-pressed={selected}
+              aria-disabled={!free || undefined}
+              aria-current={dateKey === todayKey ? 'date' : undefined}
+              tabIndex={dateKey === tabStop ? 0 : -1}
+              onClick={() => free && onSelectDate(dateKey)}
+              onKeyDown={(event) => handleKeyDown(event, dateKey)}
+              className={cn(
+                'flex h-[52px] w-full max-w-12 flex-col items-center justify-center gap-[3px] justify-self-center rounded-field font-sans text-body leading-ui font-medium transition-colors',
+                selected ? 'bg-ink text-paper' : free ? 'cursor-pointer text-ink hover:bg-line' : 'cursor-default text-muted opacity-55'
               )}
+            >
+              {day}
+              {free && <span aria-hidden="true" className="h-[5px] w-[5px] rounded-full bg-slot" />}
             </button>
           );
         })}
       </div>
-    </Card>
+
+      <p className="flex items-center gap-2 font-sans text-small text-muted">
+        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-slot" />
+        {t('booking.datePicker.legend')}
+      </p>
+    </StepCard>
   );
 };

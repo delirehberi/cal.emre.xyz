@@ -41,50 +41,83 @@ export interface TranslationDictionary {
     closeMenu: string;
   };
   booking: {
+    intro: {
+      eyebrow: string;
+      title: string;
+      subtitle: string;
+    };
     hostCard: {
+      eyebrow: string;
       verifiedBadge: string;
-      timezone: string;
-      viewProfile: string;
       defaultBio: string;
     };
-    durationPicker: {
-      title: string;
-      minutesOption: string;
+    steps: {
+      duration: string;
+      day: string;
+      time: string;
+      details: string;
+    };
+    duration: {
+      groupLabel: string;
+      minutes: string;
+      longer: string;
+      fewer: string;
     };
     datePicker: {
-      title: string;
-      today: string;
       previousMonth: string;
       nextMonth: string;
-      noAvailableSlots: string;
+      legend: string;
+      weekdays: string;
+      dayAvailable: string;
+      dayUnavailable: string;
     };
-    timeSlotGrid: {
-      title: string;
-      timezoneNotice: string;
-      changeTimezone: string;
-      selectPrompt: string;
-      noSlotsForDate: string;
-      busySlotTooltip: string;
+    timeSlots: {
+      timezone: string;
+      dayLine: string;
+      slotsLabel: string;
+      noSlots: string;
+      folded: string;
+      show: string;
+      hide: string;
+      unavailableLabel: string;
+      busyTooltip: string;
     };
     form: {
-      title: string;
+      selectedTime: string;
+      change: string;
+      titleLabel: string;
+      titlePlaceholder: string;
+      titleFallback: string;
       nameLabel: string;
-      namePlaceholder: string;
       emailLabel: string;
-      emailPlaceholder: string;
-      emailHint: string;
+      emailPublicNote: string;
       notesLabel: string;
       notesPlaceholder: string;
-      submitButton: string;
+      participantsLabel: string;
+      participantsPlaceholder: string;
+      participantsAdd: string;
+      participantsRemove: string;
+      participantsListLabel: string;
+      participantInvalid: string;
+      participantDuplicate: string;
+      privacyLabel: string;
+      encryptedTitle: string;
+      encryptedHint: string;
+      publicTitle: string;
+      publicHint: string;
+      submit: string;
       submitting: string;
-      guestNotice: string;
-    };
-    nostrBanner: {
-      title: string;
-      description: string;
+      guestNote: string;
       learnMore: string;
     };
+    stickyBar: {
+      continue: string;
+      summary: string;
+      meta: string;
+    };
     success: {
+      addToCalendar: string;
+      privateKeyLabel: string;
       title: string;
       subtitle: string;
       addToGoogle: string;

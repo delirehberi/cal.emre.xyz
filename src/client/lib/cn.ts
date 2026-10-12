@@ -12,10 +12,15 @@ const twMerge = extendTailwindMerge({
         {
           text: [
             'display-xl',
+            'display-m',
+            'display-s',
             'display-l',
             'heading-xl',
             'heading-l',
+            'heading-s',
+            'heading-xs',
             'heading-m',
+            'lead',
             'body-l',
             'body',
             'ui',
