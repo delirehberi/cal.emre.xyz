@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
+import { AlertCircle, Check, Copy, Eye, EyeOff, Key, Radio, ShieldCheck } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { Tabs, getPanelId, getTabId, type TabItem } from '../ui/Tabs';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../i18n';
-import { Key, ShieldCheck, Radio, AlertCircle } from 'lucide-react';
+import { generateGuestKeyPair } from '../../lib/nostr/keys';
 
 export interface LoginModalProps {
   isOpen: boolean;
@@ -12,29 +14,78 @@ export interface LoginModalProps {
   onSuccess?: () => void;
 }
 
-type TabType = 'extension' | 'bunker' | 'nsec';
+export type LoginTab = 'extension' | 'bunker' | 'nsec';
+
+const TAB_ICON = 'h-[15px] w-[15px] shrink-0';
+
+interface MethodIntroProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}
+
+const MethodIntro: React.FC<MethodIntroProps> = ({ icon, title, description }) => (
+  <div className="flex flex-col items-center gap-2.5 py-1 text-center">
+    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-line text-ink">{icon}</div>
+    <h3 className="font-sans text-[16px] leading-ui font-semibold text-ink">{title}</h3>
+    <p className="font-sans text-caption text-muted">{description}</p>
+  </div>
+);
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
   const { loginWithExtension, loginWithBunker, loginWithNsec, error, clearError } = useAuth();
+  const idBase = useId();
 
-  const [activeTab, setActiveTab] = useState<TabType>('extension');
+  const [activeTab, setActiveTab] = useState<LoginTab>('extension');
   const [bunkerUri, setBunkerUri] = useState('');
   const [nsecInput, setNsecInput] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    []
+  );
+
+  const tabs: ReadonlyArray<TabItem<LoginTab>> = [
+    { value: 'extension', label: t('auth.tabs.extension'), icon: <ShieldCheck aria-hidden="true" className={TAB_ICON} /> },
+    { value: 'bunker', label: t('auth.tabs.bunker'), icon: <Radio aria-hidden="true" className={TAB_ICON} /> },
+    { value: 'nsec', label: t('auth.tabs.key'), icon: <Key aria-hidden="true" className={TAB_ICON} /> },
+  ];
+
+  const resetSecrets = () => {
+    setNsecInput('');
+    setBunkerUri('');
+    setShowKey(false);
+    setGenerated(false);
+    setCopied(false);
+  };
 
   const handleClose = () => {
     clearError();
     setFormError(null);
+    resetSecrets();
     onClose();
   };
 
-  const handleExtensionLogin = async () => {
+  const selectTab = (tab: LoginTab) => {
+    setActiveTab(tab);
+    setFormError(null);
+    clearError();
+  };
+
+  const run = async (login: () => Promise<void>) => {
     setIsLoading(true);
     setFormError(null);
     try {
-      await loginWithExtension();
+      await login();
       onSuccess?.();
       handleClose();
     } catch (err) {
@@ -44,41 +95,45 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
     }
   };
 
-  const handleBunkerLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bunkerUri.trim()) return;
-
-    setIsLoading(true);
-    setFormError(null);
-    try {
-      await loginWithBunker(bunkerUri.trim());
-      onSuccess?.();
-      handleClose();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
+  const handleBunkerLogin = (event: React.FormEvent) => {
+    event.preventDefault();
+    const uri = bunkerUri.trim();
+    if (uri) void run(() => loginWithBunker(uri));
   };
 
-  const handleNsecLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nsecInput.trim()) return;
+  const handleNsecLogin = (event: React.FormEvent) => {
+    event.preventDefault();
+    const key = nsecInput.trim();
+    if (key) void run(() => loginWithNsec(key));
+  };
 
-    setIsLoading(true);
+  const handleGenerate = () => {
+    const { nsec } = generateGuestKeyPair();
+    setNsecInput(nsec);
+    setShowKey(true);
+    setGenerated(true);
+    setCopied(false);
     setFormError(null);
+  };
+
+  const handleCopyKey = async () => {
     try {
-      await loginWithNsec(nsecInput.trim());
-      onSuccess?.();
-      handleClose();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
+      await navigator.clipboard.writeText(nsecInput);
+      setCopied(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
     }
   };
 
   const displayError = formError || error;
+  const panelProps = (tab: LoginTab) => ({
+    role: 'tabpanel' as const,
+    id: getPanelId(idBase, tab),
+    'aria-labelledby': getTabId(idBase, tab),
+    className: 'flex flex-col gap-5',
+  });
 
   return (
     <Modal
@@ -88,149 +143,117 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
       description={t('auth.loginModalSubtitle')}
       maxWidth="md"
     >
-      {/* Tab Navigation */}
-      <div className="flex rounded-lg border border-stone-200 bg-stone-100/70 p-1 dark:border-stone-800 dark:bg-stone-950 mb-5">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('extension');
-            setFormError(null);
-          }}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-            activeTab === 'extension'
-              ? 'bg-white text-stone-900 shadow-xs dark:bg-stone-800 dark:text-stone-50'
-              : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
-          }`}
-        >
-          <ShieldCheck className="h-3.5 w-3.5" />
-          <span>Extension</span>
-        </button>
+      <div className="flex flex-col gap-5">
+        <Tabs items={tabs} value={activeTab} onChange={selectTab} label={t('auth.tabsLabel')} idBase={idBase} />
 
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('bunker');
-            setFormError(null);
-          }}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-            activeTab === 'bunker'
-              ? 'bg-white text-stone-900 shadow-xs dark:bg-stone-800 dark:text-stone-50'
-              : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
-          }`}
-        >
-          <Radio className="h-3.5 w-3.5" />
-          <span>Bunker</span>
-        </button>
+        {displayError && (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-button border border-ink bg-paper p-3 font-sans text-caption leading-ui font-semibold text-ink"
+          >
+            <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{displayError}</span>
+          </p>
+        )}
 
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('nsec');
-            setFormError(null);
-          }}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-            activeTab === 'nsec'
-              ? 'bg-white text-stone-900 shadow-xs dark:bg-stone-800 dark:text-stone-50'
-              : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
-          }`}
-        >
-          <Key className="h-3.5 w-3.5" />
-          <span>Key</span>
-        </button>
+        {activeTab === 'extension' && (
+          <div {...panelProps('extension')}>
+            <MethodIntro
+              icon={<ShieldCheck aria-hidden="true" className="h-[22px] w-[22px]" />}
+              title={t('auth.methods.extension.title')}
+              description={t('auth.methods.extension.description')}
+            />
+            <Button className="w-full" isLoading={isLoading} onClick={() => void run(loginWithExtension)}>
+              {t('auth.methods.extension.button')}
+            </Button>
+          </div>
+        )}
+
+        {activeTab === 'bunker' && (
+          <form {...panelProps('bunker')} onSubmit={handleBunkerLogin}>
+            <MethodIntro
+              icon={<Radio aria-hidden="true" className="h-[22px] w-[22px]" />}
+              title={t('auth.methods.bunker.title')}
+              description={t('auth.methods.bunker.description')}
+            />
+            <Input
+              label={t('auth.methods.bunker.label')}
+              value={bunkerUri}
+              onChange={(event) => setBunkerUri(event.target.value)}
+              placeholder={t('auth.methods.bunker.placeholder')}
+              disabled={isLoading}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              className="font-mono"
+            />
+            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!bunkerUri.trim()}>
+              {t('auth.methods.bunker.button')}
+            </Button>
+          </form>
+        )}
+
+        {activeTab === 'nsec' && (
+          <form {...panelProps('nsec')} onSubmit={handleNsecLogin}>
+            <MethodIntro
+              icon={<Key aria-hidden="true" className="h-[22px] w-[22px]" />}
+              title={t('auth.methods.nsec.title')}
+              description={t('auth.methods.nsec.description')}
+            />
+            <Input
+              label={t('auth.methods.nsec.label')}
+              type={showKey ? 'text' : 'password'}
+              value={nsecInput}
+              onChange={(event) => {
+                setNsecInput(event.target.value);
+                setGenerated(false);
+              }}
+              placeholder={t('auth.methods.nsec.placeholder')}
+              helperText={generated ? t('auth.methods.nsec.generatedNote') : undefined}
+              disabled={isLoading}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              className="pr-10 font-mono"
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowKey((value) => !value)}
+                  aria-label={showKey ? t('auth.methods.nsec.hide') : t('auth.methods.nsec.show')}
+                  aria-pressed={showKey}
+                  className="cursor-pointer rounded-control p-1 text-muted transition-colors hover:text-ink"
+                >
+                  {showKey ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+                </button>
+              }
+            />
+            {generated && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="self-start"
+                onClick={() => void handleCopyKey()}
+                leftIcon={
+                  copied ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+                }
+              >
+                {copied ? t('common.copied') : t('common.copy')}
+              </Button>
+            )}
+            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!nsecInput.trim()}>
+              {t('auth.methods.nsec.button')}
+            </Button>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isLoading}
+              className="mx-auto cursor-pointer rounded-control font-sans text-caption leading-ui font-semibold text-ink hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {t('auth.methods.nsec.generate')}
+            </button>
+          </form>
+        )}
       </div>
-
-      {displayError && (
-        <div className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-900/50">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>{displayError}</span>
-        </div>
-      )}
-
-      {/* Tab 1: Extension (NIP-07) */}
-      {activeTab === 'extension' && (
-        <div className="space-y-4 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-              {t('auth.methods.extension.title')}
-            </h3>
-            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-              {t('auth.methods.extension.description')}
-            </p>
-          </div>
-          <Button
-            variant="primary"
-            className="w-full"
-            isLoading={isLoading}
-            onClick={handleExtensionLogin}
-          >
-            {t('auth.methods.extension.button')}
-          </Button>
-        </div>
-      )}
-
-      {/* Tab 2: Nostr Connect (NIP-46 Bunker) */}
-      {activeTab === 'bunker' && (
-        <form onSubmit={handleBunkerLogin} className="space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-              {t('auth.methods.bunker.title')}
-            </h3>
-            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-              {t('auth.methods.bunker.description')}
-            </p>
-          </div>
-          <Input
-            value={bunkerUri}
-            onChange={(e) => setBunkerUri(e.target.value)}
-            placeholder={t('auth.methods.bunker.placeholder')}
-            disabled={isLoading}
-            autoFocus
-          />
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full"
-            isLoading={isLoading}
-            disabled={!bunkerUri.trim()}
-          >
-            {t('auth.methods.bunker.button')}
-          </Button>
-        </form>
-      )}
-
-      {/* Tab 3: Secret Key (nsec) */}
-      {activeTab === 'nsec' && (
-        <form onSubmit={handleNsecLogin} className="space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-              {t('auth.methods.nsec.title')}
-            </h3>
-            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-              {t('auth.methods.nsec.description')}
-            </p>
-          </div>
-          <Input
-            type="password"
-            value={nsecInput}
-            onChange={(e) => setNsecInput(e.target.value)}
-            placeholder={t('auth.methods.nsec.placeholder')}
-            disabled={isLoading}
-            autoFocus
-          />
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full"
-            isLoading={isLoading}
-            disabled={!nsecInput.trim()}
-          >
-            {t('auth.methods.nsec.button')}
-          </Button>
-        </form>
-      )}
     </Modal>
   );
 };

@@ -102,6 +102,12 @@ export interface TranslationDictionary {
   auth: {
     loginModalTitle: string;
     loginModalSubtitle: string;
+    tabsLabel: string;
+    tabs: {
+      extension: string;
+      bunker: string;
+      key: string;
+    };
     methods: {
       extension: {
         title: string;
@@ -111,14 +117,20 @@ export interface TranslationDictionary {
       bunker: {
         title: string;
         description: string;
+        label: string;
         placeholder: string;
         button: string;
       };
       nsec: {
         title: string;
         description: string;
+        label: string;
         placeholder: string;
         button: string;
+        generate: string;
+        generatedNote: string;
+        show: string;
+        hide: string;
       };
     };
     guestKeyModal: {

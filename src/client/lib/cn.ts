@@ -27,7 +27,7 @@ const twMerge = extendTailwindMerge({
         },
       ],
       leading: [{ leading: ['ui'] }],
-      rounded: [{ rounded: ['control', 'button', 'field', 'card', 'panel', 'hero'] }],
+      rounded: [{ rounded: ['control', 'button', 'tab', 'field', 'card', 'panel', 'hero'] }],
     },
   },
 });

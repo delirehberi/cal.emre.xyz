@@ -173,9 +173,13 @@
   /* Natural line height of Instrument Sans as Figma lays out controls (15px -> 18, 13px -> 16, 12px -> 15). */
   --leading-ui: 1.22;
 
+  /* Elevation for popovers and dialogs (menus, modals). */
+  --shadow-popover: 0 12px 32px -4px rgb(0 0 0 / 0.14);
+
   /* Radii */
   --radius-control: 10px;
   --radius-button: 12px;
+  --radius-tab: 9px;
   --radius-field: 14px;
   --radius-card: 20px;
   --radius-panel: 24px;

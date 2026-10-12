@@ -199,7 +199,7 @@ export const Menu: React.FC<MenuProps> = ({ items, renderTrigger, label, align =
           aria-label={label}
           onKeyDown={handlePanelKeyDown}
           className={clsx(
-            'absolute z-50 mt-4 flex w-[220px] flex-col gap-0.5 rounded-[16px] border border-line bg-card p-1.5 shadow-[0_12px_16px_rgba(0,0,0,0.14)]',
+            'absolute z-50 mt-4 flex w-[220px] flex-col gap-0.5 rounded-[16px] border border-line bg-card p-1.5 shadow-popover',
             align === 'right' ? 'right-0' : 'left-0'
           )}
         >
