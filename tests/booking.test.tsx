@@ -264,9 +264,9 @@ describe('TimeSlotGrid', () => {
     const onTimezoneChange = vi.fn();
     renderGrid({ onTimezoneChange });
     expect(screen.getByText('Tuesday, March 3 · 30 min')).toBeTruthy();
-    const select = screen.getByRole('combobox', { name: 'Time zone' }) as HTMLSelectElement;
-    expect(select.value).toBe('Europe/Istanbul');
-    expect(within(select as unknown as HTMLElement).getByRole('option', { name: 'Europe/Istanbul (GMT+3)' })).toBeTruthy();
+    const select = screen.getByRole('combobox', { name: 'Time zone' });
+    expect((select as unknown as { value: string }).value).toBe('Europe/Istanbul');
+    expect(within(select).getByRole('option', { name: 'Europe/Istanbul (GMT+3)' })).toBeTruthy();
     await user.selectOptions(select, 'UTC');
     expect(onTimezoneChange).toHaveBeenCalledWith('UTC');
   });
