@@ -51,7 +51,7 @@ export const MainLayout: React.FC = () => {
   const identifier = getIdentifierFromPath(currentPath);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] transition-colors">
+    <div className="flex min-h-screen flex-col bg-paper text-ink transition-colors">
       <Header currentPath={currentPath} onNavigate={handleNavigate} />
       <main className="flex-1">
         {isDashboard ? (
