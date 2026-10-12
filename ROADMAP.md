@@ -179,4 +179,4 @@ Tracked in issues #1–#10; design source of truth is the Kün Figma file.
 - [x] **9.5** Dashboard: link bar, stats, appointment cards (accept, decline, cancel, invite, copy link, `.ics`), per-day working hours, offered durations, gap and minimum notice; availability is published to relays as a NIP-78 event (kind `30078`) and read by the booking page.
 - [x] **9.6** About page: open source and self-hosting pitch, example page card, setup steps, code card.
 - [x] **9.7** QA: keyboard pass (no traps, visible focus rings on every control), WCAG AA contrast tests for both themes, TR/EN key parity test, `make test` / `make typecheck` / `make build`.
-- [ ] **9.8** Open design question: the Nostr badge text (`nostr` on `nostr-soft`) is 3.73:1 in light mode, below AA for 13px text. Pending a decision on a darker light-mode text token.
+- [x] **9.8** Accepted as designed: the Nostr badge text (`nostr` on `nostr-soft`) is 3.73:1 in light mode, below AA for 13px text. `tests/contrast.test.ts` pins it at that floor.
