@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 
 export type Theme = 'light' | 'dark';
 
-const THEME_STORAGE_KEY = 'cal_theme';
+export const THEME_STORAGE_KEY = 'cal_theme';
 
 export interface ThemeContextType {
   theme: Theme;
@@ -30,6 +30,12 @@ export const getInitialTheme = (): Theme => {
   return 'light';
 };
 
+export const applyTheme = (theme: Theme, root: HTMLElement | undefined = typeof document !== 'undefined' ? document.documentElement : undefined): void => {
+  if (!root) return;
+  root.classList.toggle('dark', theme === 'dark');
+  root.style.colorScheme = theme;
+};
+
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export interface ThemeProviderProps {
@@ -39,16 +45,6 @@ export interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, initialTheme }) => {
   const [theme, setThemeState] = useState<Theme>(() => initialTheme || getInitialTheme());
-
-  const applyThemeToDOM = (activeTheme: Theme) => {
-    if (typeof window === 'undefined' || !document.documentElement) return;
-    const root = document.documentElement;
-    if (activeTheme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  };
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
@@ -65,7 +61,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, initialT
     } catch {
       // Ignore storage errors
     }
-    applyThemeToDOM(newTheme);
   };
 
   const toggleTheme = () => {
@@ -74,7 +69,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, initialT
   };
 
   useEffect(() => {
-    applyThemeToDOM(theme);
+    applyTheme(theme);
   }, [theme]);
 
   const value = useMemo<ThemeContextType>(

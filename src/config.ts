@@ -8,6 +8,9 @@ export const APP_CONFIG = {
   description: 'Decentralized Nostr NIP-52 Calendar & Appointment System',
   supportEmail: 'z@emre.xyz',
   adminEmail: 'z@emre.xyz',
+  repoUrl: 'https://github.com/delirehberi/cal.emre.xyz',
+  /** Lightning address that receives support for the project. */
+  lightningAddress: 'delirehberi@emre.xyz',
   defaultHostNip05: 'delirehberi@emre.xyz',
   defaultHostPubkey: '46f3c7bb33cc3019049b76dc89dbb96e34c247bdda68b6ad8632682793ff8a1a',
   defaultHostPicture: 'https://emre.xyz/delirehberi.png',
@@ -23,7 +26,9 @@ export const APP_CONFIG = {
     'wss://relay.primal.net',
     'wss://nostr.mom',
   ] as const,
-  allowedDurationsMinutes: [15, 30, 60] as const,
+  allowedDurationsMinutes: [15, 30, 45, 60] as const,
+  /** Offered behind the "longer…" chip on the booking page. */
+  extendedDurationsMinutes: [90, 120] as const,
   defaultDurationMinutes: 30,
   defaultWorkingHours: {
     startHour: 9,

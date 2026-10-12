@@ -78,28 +78,21 @@ describe('Host Dashboard & Availability Settings Tests (Phase 7)', () => {
     });
   });
 
-  describe('WorkingHoursForm Component Rendering', () => {
-    it('renders WorkingHoursForm with all fields and options', () => {
-      const html = renderToString(
-        wrapper({
-          children: <WorkingHoursForm pubkey={dummyPubkey} />,
-        })
-      );
+  describe('Dashboard rendering', () => {
+    it('renders the working hours editor with its day rows and settings', () => {
+      const html = renderToString(wrapper({ children: <WorkingHoursForm pubkey={dummyPubkey} /> }));
 
-      expect(html).toContain('Working Hours Configuration');
-      expect(html).toContain('Working Days');
-      expect(html).toContain('Start Hour (0-23)');
-      expect(html).toContain('End Hour (0-23)');
-      expect(html).toContain('Default Duration (Minutes)');
-      expect(html).toContain('Host Timezone');
-      expect(html).toContain('Buffer Between Meetings');
-      expect(html).toContain('Meeting Location / Video Call Link');
-      expect(html).toContain('Save Availability Settings');
+      expect(html).toContain('Working hours');
+      expect(html).toContain('Monday');
+      expect(html).toContain('Sunday');
+      expect(html).toContain('Not available');
+      expect(html).toContain('Meeting lengths');
+      expect(html).toContain('Gap between appointments');
+      expect(html).toContain('Earliest booking');
+      expect(html).toContain('Save changes');
     });
-  });
 
-  describe('BookedEventsList Component Rendering', () => {
-    it('renders BookedEventsList with tab headers and refresh button', () => {
+    it('renders the appointments tab header, empty state and refresh button', () => {
       const html = renderToString(
         wrapper({
           children: (
@@ -107,27 +100,25 @@ describe('Host Dashboard & Availability Settings Tests (Phase 7)', () => {
               pubkey={dummyPubkey}
               signer={null}
               hostTimezone="Europe/Istanbul"
+              appointments={[]}
+              onAppointmentsChange={() => undefined}
+              isLoading={false}
+              onRefresh={() => undefined}
             />
-          )
+          ),
         })
       );
 
-      expect(html).toContain('Upcoming Appointments');
-      expect(html).toContain('Past Appointments');
+      expect(html).toContain('Upcoming appointments');
+      expect(html).toContain('No upcoming appointments.');
       expect(html).toContain('Refresh');
     });
-  });
 
-  describe('DashboardPage Component Rendering', () => {
-    it('renders unauthenticated login prompt when user is not logged in', () => {
-      const html = renderToString(
-        wrapper({
-          children: <DashboardPage />,
-        })
-      );
+    it('renders the sign-in prompt when no host is signed in', () => {
+      const html = renderToString(wrapper({ children: <DashboardPage /> }));
 
-      expect(html).toContain('Host Authentication Required');
-      expect(html).toContain('Connect with Nostr');
+      expect(html).toContain('Sign in to open your dashboard');
+      expect(html).toContain('Sign in with Nostr');
     });
   });
 

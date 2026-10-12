@@ -24,62 +24,100 @@ export interface TranslationDictionary {
     actions: string;
   };
   header: {
-    title: string;
-    subtitle: string;
+    homeAria: string;
     home: string;
+    about: string;
     dashboard: string;
     support: string;
     login: string;
     logout: string;
+    copyNpub: string;
     themeLight: string;
     themeDark: string;
     language: string;
+    primaryNav: string;
+    userMenu: string;
+    openMenu: string;
+    closeMenu: string;
   };
   booking: {
+    intro: {
+      eyebrow: string;
+      title: string;
+      subtitle: string;
+    };
     hostCard: {
+      eyebrow: string;
       verifiedBadge: string;
-      timezone: string;
-      viewProfile: string;
       defaultBio: string;
     };
-    durationPicker: {
-      title: string;
-      minutesOption: string;
+    steps: {
+      duration: string;
+      day: string;
+      time: string;
+      details: string;
+    };
+    duration: {
+      groupLabel: string;
+      minutes: string;
+      longer: string;
+      fewer: string;
     };
     datePicker: {
-      title: string;
-      today: string;
       previousMonth: string;
       nextMonth: string;
-      noAvailableSlots: string;
+      legend: string;
+      weekdays: string;
+      dayAvailable: string;
+      dayUnavailable: string;
     };
-    timeSlotGrid: {
-      title: string;
-      timezoneNotice: string;
-      changeTimezone: string;
-      selectPrompt: string;
-      noSlotsForDate: string;
-      busySlotTooltip: string;
+    timeSlots: {
+      timezone: string;
+      dayLine: string;
+      slotsLabel: string;
+      noSlots: string;
+      folded: string;
+      show: string;
+      hide: string;
+      unavailableLabel: string;
+      busyTooltip: string;
     };
     form: {
-      title: string;
+      selectedTime: string;
+      change: string;
+      titleLabel: string;
+      titlePlaceholder: string;
+      titleFallback: string;
       nameLabel: string;
-      namePlaceholder: string;
       emailLabel: string;
-      emailPlaceholder: string;
-      emailHint: string;
+      emailPublicNote: string;
       notesLabel: string;
       notesPlaceholder: string;
-      submitButton: string;
+      participantsLabel: string;
+      participantsPlaceholder: string;
+      participantsAdd: string;
+      participantsRemove: string;
+      participantsListLabel: string;
+      participantInvalid: string;
+      participantDuplicate: string;
+      privacyLabel: string;
+      encryptedTitle: string;
+      encryptedHint: string;
+      publicTitle: string;
+      publicHint: string;
+      submit: string;
       submitting: string;
-      guestNotice: string;
-    };
-    nostrBanner: {
-      title: string;
-      description: string;
+      guestNote: string;
       learnMore: string;
     };
+    stickyBar: {
+      continue: string;
+      summary: string;
+      meta: string;
+    };
     success: {
+      addToCalendar: string;
+      privateKeyLabel: string;
       title: string;
       subtitle: string;
       addToGoogle: string;
@@ -97,6 +135,12 @@ export interface TranslationDictionary {
   auth: {
     loginModalTitle: string;
     loginModalSubtitle: string;
+    tabsLabel: string;
+    tabs: {
+      extension: string;
+      bunker: string;
+      key: string;
+    };
     methods: {
       extension: {
         title: string;
@@ -106,14 +150,20 @@ export interface TranslationDictionary {
       bunker: {
         title: string;
         description: string;
+        label: string;
         placeholder: string;
         button: string;
       };
       nsec: {
         title: string;
         description: string;
+        label: string;
         placeholder: string;
         button: string;
+        generate: string;
+        generatedNote: string;
+        show: string;
+        hide: string;
       };
     };
     guestKeyModal: {
@@ -126,65 +176,156 @@ export interface TranslationDictionary {
     };
   };
   dashboard: {
-    title: string;
-    subtitle: string;
+    eyebrow: string;
+    greeting: string;
+    hostFallback: string;
+    tabsLabel: string;
     availabilityTab: string;
     appointmentsTab: string;
     shareLink: {
-      title: string;
-      description: string;
+      label: string;
+      copy: string;
       copied: string;
+      open: string;
+    };
+    stats: {
+      upcoming: string;
+      upcomingSub: string;
+      pending: string;
+      pendingSub: string;
+      month: string;
+      monthSubUp: string;
+      monthSubDown: string;
+      monthSubSame: string;
     };
     unauthenticated: {
       title: string;
       description: string;
       loginButton: string;
     };
-    workingHours: {
-      title: string;
-      startHour: string;
-      endHour: string;
-      workingDays: string;
-      meetingDuration: string;
-      timezone: string;
-      bufferMinutes: string;
-      locationOrLink: string;
-      locationPlaceholder: string;
-      saveButton: string;
-      savedSuccess: string;
+    availability: {
+      hoursTitle: string;
+      hoursDescription: string;
+      dayToggle: string;
+      unavailable: string;
+      startLabel: string;
+      endLabel: string;
+      durationsTitle: string;
+      durationsLabel: string;
+      durationsMinimum: string;
+      settingsTitle: string;
+      buffer: string;
+      bufferOption: string;
+      bufferNone: string;
+      minNotice: string;
+      noticeNone: string;
+      noticeMinutes: string;
+      noticeHours: string;
+      noticeDays: string;
+      save: string;
+      saving: string;
+      saved: string;
+      savedLocalOnly: string;
+      publishFailed: string;
+      invalidHours: string;
+      days: {
+        sunday: string;
+        monday: string;
+        tuesday: string;
+        wednesday: string;
+        thursday: string;
+        friday: string;
+        saturday: string;
+      };
     };
     appointments: {
       upcomingTitle: string;
       pastTitle: string;
-      noAppointments: string;
+      refresh: string;
       noUpcoming: string;
       noPast: string;
+      noAppointments: string;
+      loadFailed: string;
       statusAccepted: string;
-      statusTentative: string;
+      statusPending: string;
       statusDeclined: string;
+      statusCancelled: string;
+      encrypted: string;
       acceptAction: string;
       declineAction: string;
       cancelAction: string;
-      joinMeeting: string;
       copyLink: string;
-      updatingStatus: string;
-      confirmCancelTitle: string;
-      confirmCancelText: string;
-      encryptedBadge: string;
-      decryptedBadge: string;
+      linkCopied: string;
+      invite: string;
+      inviteCopied: string;
+      downloadIcs: string;
+      joinMeeting: string;
       decryptAction: string;
       decrypting: string;
+      defaultTitle: string;
+      timeLine: string;
+      confirmCancelTitle: string;
+      confirmCancelText: string;
+      keepMeeting: string;
       privateNotes: string;
       attendeeEmail: string;
     };
   };
+  about: {
+    eyebrowOpenSource: string;
+    eyebrowSelfHost: string;
+    titleLine1: string;
+    titleLine2: string;
+    lead: string;
+    ctaGithub: string;
+    ctaOwnPage: string;
+    example: {
+      eyebrow: string;
+      title: string;
+      nip05: string;
+      npub: string;
+      noAccount: string;
+      noMiddleman: string;
+      dataOnRelays: string;
+    };
+    pillars: {
+      openSource: { title: string; text: string };
+      ownKey: { title: string; text: string };
+      selfHosted: { title: string; text: string };
+    };
+    steps: {
+      eyebrow: string;
+      title: string;
+      titleShort: string;
+      one: { title: string; text: string };
+      two: { title: string; text: string };
+      three: { title: string; text: string };
+    };
+    selfHost: {
+      eyebrow: string;
+      titleLine1: string;
+      titleLine2: string;
+      titleShort: string;
+      text: string;
+      repoLabel: string;
+      codeLabel: string;
+      commentFill: string;
+      commentDeploy: string;
+      copy: string;
+      copied: string;
+    };
+    contribute: {
+      title: string;
+      text: string;
+      issues: string;
+      star: string;
+      support: string;
+      supportLabel: string;
+    };
+  };
   footer: {
-    description: string;
-    nip52Spec: string;
-    whatIsNostr: string;
-    nostrOrgTr: string;
-    githubRepo: string;
-    license: string;
+    nostrBadge: string;
+    linksLabel: string;
   };
   errors: {
     generic: string;

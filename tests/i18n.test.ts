@@ -31,28 +31,27 @@ describe('i18n Dictionary Parity & Integrity', () => {
   });
 
   it('should correctly resolve nested translation keys', () => {
-    const titleEn = resolveTranslation(en, 'header.title');
-    expect(titleEn).toBe('cal.emre.xyz');
-
-    const titleTr = resolveTranslation(tr, 'header.title');
-    expect(titleTr).toBe('cal.emre.xyz');
-
-    const subEn = resolveTranslation(en, 'header.subtitle');
-    expect(subEn).toBe('Sovereign Scheduling with Nostr NIP-52');
-
-    const subTr = resolveTranslation(tr, 'header.subtitle');
-    expect(subTr).toBe('Nostr NIP-52 ile Egemen Randevu ve Takvim Sistemi');
+    expect(resolveTranslation(en, 'header.home')).toBe('Home');
+    expect(resolveTranslation(tr, 'header.home')).toBe('Ana Sayfa');
+    expect(resolveTranslation(en, 'header.about')).toBe('About');
+    expect(resolveTranslation(tr, 'header.about')).toBe('Hakkında');
+    expect(resolveTranslation(tr, 'header.support')).toBe('Destek');
+    expect(resolveTranslation(tr, 'header.login')).toBe('Giriş');
+    expect(resolveTranslation(tr, 'header.logout')).toBe('Çıkış Yap');
+    expect(resolveTranslation(tr, 'header.dashboard')).toBe('Yönetim Paneli');
+    expect(resolveTranslation(tr, 'header.copyNpub')).toBe('npub’i kopyala');
   });
 
   it('should replace dynamic template interpolation parameters', () => {
-    const durationEn = resolveTranslation(en, 'booking.durationPicker.minutesOption', { minutes: 30 });
-    expect(durationEn).toBe('30 mins');
-
-    const durationTr = resolveTranslation(tr, 'booking.durationPicker.minutesOption', { minutes: 30 });
-    expect(durationTr).toBe('30 dakika');
-
-    const timezoneEn = resolveTranslation(en, 'booking.timeSlotGrid.timezoneNotice', { timezone: 'Europe/Istanbul' });
-    expect(timezoneEn).toBe('Times displayed in your selected timezone (Europe/Istanbul)');
+    expect(resolveTranslation(en, 'booking.duration.minutes', { minutes: 30 })).toBe('30 min');
+    expect(resolveTranslation(tr, 'booking.duration.minutes', { minutes: 30 })).toBe('30 dk');
+    expect(
+      resolveTranslation(tr, 'booking.form.selectedTime', { dayMonth: '15 Ekim', weekday: 'Perşembe', start: '14:30', end: '15:00' })
+    ).toBe('15 Ekim, Perşembe · 14:30 – 15:00');
+    expect(
+      resolveTranslation(en, 'booking.form.selectedTime', { dayMonth: 'October 15', weekday: 'Thursday', start: '14:30', end: '15:00' })
+    ).toBe('Thursday, October 15 · 14:30 – 15:00');
+    expect(resolveTranslation(tr, 'booking.timeSlots.folded', { count: 11 })).toBe('11 saat dolu ya da geçmiş');
   });
 
   it('should return fallback key string if key path does not exist', () => {

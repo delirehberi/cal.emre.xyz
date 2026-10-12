@@ -1,48 +1,58 @@
-import React from 'react';
-import { Clock } from 'lucide-react';
+import React, { useState } from 'react';
 import { useTranslation } from '../../i18n';
-import { Card } from '../ui/Card';
+import { ChipGroup } from '../ui/Chip';
+import { StepCard } from './StepCard';
+import { cn } from '../../lib/cn';
 
 export interface DurationPickerProps {
   durations: readonly number[];
+  /** Offered behind the "longer…" chip. */
+  extendedDurations?: readonly number[];
   selectedDuration: number;
   onSelectDuration: (durationMinutes: number) => void;
 }
 
+/** Step 1: how long the meeting lasts. */
 export const DurationPicker: React.FC<DurationPickerProps> = ({
   durations,
+  extendedDurations = [],
   selectedDuration,
   onSelectDuration,
 }) => {
   const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  // A chosen extended length must stay visible even if the list was collapsed.
+  const showExtended = expanded || extendedDurations.includes(selectedDuration);
+
+  const options = (showExtended ? [...durations, ...extendedDurations] : [...durations]).map((minutes) => ({
+    value: minutes,
+    label: t('booking.duration.minutes', { minutes }),
+  }));
 
   return (
-    <Card className="space-y-3 p-4!">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300">
-        <Clock className="h-4 w-4" />
-        <span>{t('booking.durationPicker.title')}</span>
+    <StepCard step={1} title={t('booking.steps.duration')}>
+      <div className="flex flex-wrap gap-2">
+        <ChipGroup
+          className="contents"
+          aria-label={t('booking.duration.groupLabel')}
+          options={options}
+          value={selectedDuration}
+          onChange={onSelectDuration}
+        />
+        {extendedDurations.length > 0 && (
+          <button
+            type="button"
+            aria-expanded={showExtended}
+            onClick={() => setExpanded(!showExtended)}
+            disabled={extendedDurations.includes(selectedDuration) && showExtended}
+            className={cn(
+              'inline-flex cursor-pointer items-center justify-center rounded-full border border-line bg-card px-[18px] py-2.5 font-sans text-body leading-ui font-medium whitespace-nowrap text-ink transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-50'
+            )}
+          >
+            {showExtended ? t('booking.duration.fewer') : t('booking.duration.longer')}
+          </button>
+        )}
       </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        {durations.map((duration) => {
-          const isSelected = selectedDuration === duration;
-          return (
-            <button
-              key={duration}
-              type="button"
-              onClick={() => onSelectDuration(duration)}
-              className={`flex flex-col items-center justify-center rounded-lg border py-2 px-3 text-center transition-all cursor-pointer ${
-                isSelected
-                  ? 'border-stone-900 bg-stone-900 text-stone-50 shadow-xs dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900 font-semibold'
-                  : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-300 hover:bg-stone-100 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-300 dark:hover:border-stone-700 dark:hover:bg-stone-800'
-              }`}
-            >
-              <span className="text-sm">{duration}</span>
-              <span className="text-[10px] opacity-75">{t('common.minutes')}</span>
-            </button>
-          );
-        })}
-      </div>
-    </Card>
+    </StepCard>
   );
 };

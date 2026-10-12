@@ -1,7 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
+import { migrateLegacyPath } from './lib/router';
 import './index.css';
+
+migrateLegacyPath(window.location, window.history);
 
 const rootElement = document.getElementById('root');
 

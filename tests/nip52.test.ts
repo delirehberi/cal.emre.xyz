@@ -153,3 +153,18 @@ describe('nip52.ts: NIP-52 Calendar Events Operations', () => {
     });
   });
 });
+
+describe('time event extra tags', () => {
+  it('appends extra tags after the attendee tags', async () => {
+    const { createTimeCalendarEventTemplate } = await import('../src/client/lib/nostr/nip52');
+    const template = createTimeCalendarEventTemplate({
+      identifier: 'b-1',
+      title: 'Appointment',
+      start: 1_800_000_000,
+      attendees: [{ pubkey: 'a'.repeat(64), role: 'attendee' }],
+      extraTags: [['enc', 'b'.repeat(64), 'cipher']],
+    });
+    expect(template.tags[template.tags.length - 1]).toEqual(['enc', 'b'.repeat(64), 'cipher']);
+    expect(template.tags.some((tag) => tag[0] === 'p')).toBe(true);
+  });
+});

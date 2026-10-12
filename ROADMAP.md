@@ -16,6 +16,7 @@ An open-source, decentralized scheduling application implementing [NIP-52](https
 | **Phase 6** | UI Components & Two-Column Layout | 🟢 Completed | Header (Logo, Home, Support `z@emre.xyz`, Login/Avatar dropdown), Left/Right Booking Columns, Footer |
 | **Phase 7** | Host Dashboard & Availability Manager | 🟢 Completed | `DashboardPage.tsx`, `WorkingHoursForm.tsx`, `BookedEventsList.tsx` + Vitest tests |
 | **Phase 8** | End-to-End Verification & Production Readiness | 🟢 Completed | Vitest test suite passing, zero type errors (`make typecheck`), successful `make build` |
+| **Phase 9** | Kün Redesign | 🟢 Completed | New brand, tokens, header/footer, booking page, dashboard, About page (`/#/about`), hash routing, relay-published availability |
 
 ---
 
@@ -140,7 +141,7 @@ An open-source, decentralized scheduling application implementing [NIP-52](https
     - `BookingSuccess.tsx`: Confirmation screen with direct `.ics` download, Google Calendar link, and `naddr` event coordinate.
 - [x] **6.4** Implement Auth Modals (`src/client/components/auth/`):
   - `LoginModal.tsx`: NIP-07 extension, NIP-46 Bunker URI, or nsec input.
-  - `GuestKeyModal.tsx`: Displays generated `nsec` and `npub` for guest users with copy buttons and security warning.
+  - Guest key generation moved into `LoginModal.tsx` ("Generate a new key") and the booking form; the standalone `GuestKeyModal.tsx` was removed in Phase 9.
 - [x] **6.5** Implement Footer (`src/client/components/layout/Footer.tsx`):
   - GitHub repository link, NIP-52 specification, Nostr portals ([nostr.com](https://nostr.com) & [nostr.org.tr](https://nostr.org.tr)), open-source license.
 
@@ -166,3 +167,16 @@ An open-source, decentralized scheduling application implementing [NIP-52](https
   - Busy event timespans are correctly blocked.
   - Guest booking generates keys and triggers Resend email (or gracefully skips if flag is disabled).
   - Header links (`Support` to `z@emre.xyz`), language toggle, theme toggle, and auth dropdown function seamlessly.
+
+---
+
+### Phase 9: Kün Redesign
+Tracked in issues #1–#10; design source of truth is the Kün Figma file.
+- [x] **9.1** Brand and tokens: Kün mark, wordmark and lockup (no domain or NIP number in the lockup), self-hosted Bricolage Grotesque / Instrument Sans / JetBrains Mono, semantic colour tokens for light and dark, type, radius and shadow tokens.
+- [x] **9.2** UI primitives: Button, Chip, Input/Select/TimeField, StatusBadge, Card, Toggle, Menu, Modal, Tabs (segmented and underline), Skeleton.
+- [x] **9.3** Layout: header (nav, EN/TR switch, theme toggle, user menu, mobile menu), footer, hash routing (`/#/<nip05|npub>`, `/#/about`, `/#/dashboard`) with legacy path migration.
+- [x] **9.4** Booking page: host card, durations (15/30/45/60, longer on demand), month picker, time zone select, details form, encrypted-by-default bookings for the host and invited npubs (NIP-44), success screen.
+- [x] **9.5** Dashboard: link bar, stats, appointment cards (accept, decline, cancel, invite, copy link, `.ics`), per-day working hours, offered durations, gap and minimum notice; availability is published to relays as a NIP-78 event (kind `30078`) and read by the booking page.
+- [x] **9.6** About page: open source and self-hosting pitch, example page card, setup steps, code card.
+- [x] **9.7** QA: keyboard pass (no traps, visible focus rings on every control), WCAG AA contrast tests for both themes, TR/EN key parity test, `make test` / `make typecheck` / `make build`.
+- [x] **9.8** Accepted as designed: the Nostr badge text (`nostr` on `nostr-soft`) is 3.73:1 in light mode, below AA for 13px text. `tests/contrast.test.ts` pins it at that floor.

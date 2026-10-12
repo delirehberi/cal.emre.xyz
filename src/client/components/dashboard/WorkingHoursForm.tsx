@@ -1,310 +1,303 @@
-import React, { useState, useEffect } from 'react';
-import { Card } from '../ui/Card';
+import React, { useEffect, useId, useState } from 'react';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
+import { Card } from '../ui/Card';
+import { Select } from '../ui/Input';
+import { Toggle } from '../ui/Toggle';
+import { TimeField } from '../ui/TimeField';
+import { TimezoneSelect } from '../booking/TimeSlotGrid';
 import { useTranslation } from '../../i18n';
 import {
+  type DayHours,
   type WorkingHoursConfig,
   getHostWorkingHours,
   saveHostWorkingHours,
 } from '../../lib/calendar/slots';
+import { createAvailabilityEventTemplate } from '../../lib/nostr/availability';
+import { nostrPool } from '../../lib/nostr/relays';
+import type { NostrSigner } from '../../lib/nostr/signer';
 import { APP_CONFIG } from '../../../config';
-import { Clock, Globe, MapPin, CheckCircle, ShieldCheck } from 'lucide-react';
+import { cn } from '../../lib/cn';
 
 export interface WorkingHoursFormProps {
   pubkey: string;
+  signer?: NostrSigner | null;
   onSaved?: (config: WorkingHoursConfig) => void;
 }
 
-const COMMON_TIMEZONES = [
-  'UTC',
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Sao_Paulo',
-  'Europe/London',
-  'Europe/Berlin',
-  'Europe/Paris',
-  'Europe/Istanbul',
-  'Europe/Kyiv',
-  'Asia/Dubai',
-  'Asia/Kolkata',
-  'Asia/Singapore',
-  'Asia/Tokyo',
-  'Asia/Shanghai',
-  'Australia/Sydney',
+type SaveState = 'idle' | 'saving' | 'saved' | 'localOnly' | 'publishFailed';
+
+/** Week order shown in the editor; values are JavaScript weekdays (0 = Sunday). */
+const WEEK: ReadonlyArray<{ day: number; key: keyof DayKeys }> = [
+  { day: 1, key: 'monday' },
+  { day: 2, key: 'tuesday' },
+  { day: 3, key: 'wednesday' },
+  { day: 4, key: 'thursday' },
+  { day: 5, key: 'friday' },
+  { day: 6, key: 'saturday' },
+  { day: 0, key: 'sunday' },
 ];
 
-const DAYS_OF_WEEK = [
-  { day: 1, labelEn: 'Mon', labelTr: 'Pzt' },
-  { day: 2, labelEn: 'Tue', labelTr: 'Sal' },
-  { day: 3, labelEn: 'Wed', labelTr: 'Çar' },
-  { day: 4, labelEn: 'Thu', labelTr: 'Per' },
-  { day: 5, labelEn: 'Fri', labelTr: 'Cum' },
-  { day: 6, labelEn: 'Sat', labelTr: 'Cmt' },
-  { day: 0, labelEn: 'Sun', labelTr: 'Paz' },
-];
+interface DayKeys {
+  monday: string;
+  tuesday: string;
+  wednesday: string;
+  thursday: string;
+  friday: string;
+  saturday: string;
+  sunday: string;
+}
 
-export const WorkingHoursForm: React.FC<WorkingHoursFormProps> = ({ pubkey, onSaved }) => {
-  const { t, locale } = useTranslation();
+const BUFFER_OPTIONS = [0, 5, 10, 15, 30, 60];
+const NOTICE_OPTIONS = [0, 60, 120, 240, 720, 1440, 2880, 10080];
+const DEFAULT_NOTICE_MINUTES = 15;
+
+const sortedUnique = (values: number[]): number[] => Array.from(new Set(values)).sort((a, b) => a - b);
+
+/**
+ * "Müsaitlik ve Çalışma Saatleri" tab: per-day hours, offered meeting lengths and booking rules.
+ * Saving stores the settings on this device and publishes them to the host's relays (NIP-78),
+ * which is where the public booking page reads them.
+ */
+export const WorkingHoursForm: React.FC<WorkingHoursFormProps> = ({ pubkey, signer = null, onSaved }) => {
+  const { t } = useTranslation();
+  const formId = useId();
 
   const [config, setConfig] = useState<WorkingHoursConfig>(() => getHostWorkingHours(pubkey));
-  const [isSaved, setIsSaved] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setConfig(getHostWorkingHours(pubkey));
+    setSaveState('idle');
   }, [pubkey]);
 
-  const handleDayToggle = (day: number) => {
-    setConfig((prev) => {
-      const exists = prev.workingDays.includes(day);
-      const newDays = exists
-        ? prev.workingDays.filter((d) => d !== day)
-        : [...prev.workingDays, day].sort((a, b) => a - b);
-      return { ...prev, workingDays: newDays };
+  const update = (patch: Partial<WorkingHoursConfig>) => {
+    setConfig((prev) => ({ ...prev, ...patch }));
+    setSaveState('idle');
+    setError(null);
+  };
+
+  const dayWindow = (day: number): DayHours =>
+    config.dayHours?.[day] ?? { start: config.startHour * 60, end: config.endHour * 60 };
+
+  const toggleDay = (day: number, on: boolean) => {
+    update({
+      workingDays: sortedUnique(on ? [...config.workingDays, day] : config.workingDays.filter((d) => d !== day)),
+      dayHours: on ? { ...config.dayHours, [day]: dayWindow(day) } : config.dayHours,
     });
-    setIsSaved(false);
   };
 
-  const handleStartHourChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = parseInt(e.target.value, 10);
-    setConfig((prev) => ({ ...prev, startHour: val }));
-    setIsSaved(false);
+  const setDayTime = (day: number, edge: 'start' | 'end', minutes: number) => {
+    update({ dayHours: { ...config.dayHours, [day]: { ...dayWindow(day), [edge]: minutes } } });
   };
 
-  const handleEndHourChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = parseInt(e.target.value, 10);
-    setConfig((prev) => ({ ...prev, endHour: val }));
-    setIsSaved(false);
+  const offeredDurations = config.durations ?? [...APP_CONFIG.allowedDurationsMinutes];
+  const durationChoices = sortedUnique([...APP_CONFIG.allowedDurationsMinutes, ...offeredDurations]);
+
+  const toggleDuration = (minutes: number) => {
+    const next = offeredDurations.includes(minutes)
+      ? offeredDurations.filter((d) => d !== minutes)
+      : [...offeredDurations, minutes];
+    if (next.length === 0) {
+      setError(t('dashboard.availability.durationsMinimum'));
+      return;
+    }
+    const sorted = sortedUnique(next);
+    update({
+      durations: sorted,
+      defaultDuration:
+        config.defaultDuration && sorted.includes(config.defaultDuration)
+          ? config.defaultDuration
+          : sorted.includes(APP_CONFIG.defaultDurationMinutes)
+            ? APP_CONFIG.defaultDurationMinutes
+            : sorted[0],
+    });
   };
 
-  const handleDurationChange = (duration: number) => {
-    setConfig((prev) => ({ ...prev, defaultDuration: duration }));
-    setIsSaved(false);
+  const noticeLabel = (minutes: number): string => {
+    if (minutes === 0) return t('dashboard.availability.noticeNone');
+    if (minutes % 1440 === 0) return t('dashboard.availability.noticeDays', { count: minutes / 1440 });
+    if (minutes % 60 === 0) return t('dashboard.availability.noticeHours', { count: minutes / 60 });
+    return t('dashboard.availability.noticeMinutes', { count: minutes });
   };
 
-  const handleTimezoneChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setConfig((prev) => ({ ...prev, timezone: e.target.value }));
-    setIsSaved(false);
-  };
+  const bufferLabel = (minutes: number): string =>
+    minutes === 0
+      ? t('dashboard.availability.bufferNone')
+      : t('dashboard.availability.bufferOption', { minutes });
 
-  const handleBufferChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = parseInt(e.target.value, 10);
-    setConfig((prev) => ({ ...prev, bufferMinutes: val }));
-    setIsSaved(false);
-  };
-
-  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfig((prev) => ({ ...prev, location: e.target.value }));
-    setIsSaved(false);
-  };
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
 
-    if (config.workingDays.length === 0) {
-      setError(locale === 'tr' ? 'En az bir çalışma günü seçmelisiniz.' : 'Please select at least one active working day.');
+    const hasInvalidWindow = config.workingDays.some((day) => {
+      const hours = dayWindow(day);
+      return hours.end <= hours.start;
+    });
+    if (hasInvalidWindow || config.workingDays.length === 0) {
+      setError(t('dashboard.availability.invalidHours'));
       return;
     }
 
-    if (config.startHour >= config.endHour) {
-      setError(
-        locale === 'tr'
-          ? 'Bitiş saati başlangıç saatinden sonra olmalıdır.'
-          : 'End hour must be later than start hour.'
-      );
+    const toSave: WorkingHoursConfig = {
+      ...config,
+      durations: config.durations ?? [...APP_CONFIG.allowedDurationsMinutes],
+      minNoticeMinutes: config.minNoticeMinutes ?? DEFAULT_NOTICE_MINUTES,
+    };
+    setConfig(toSave);
+    saveHostWorkingHours(pubkey, toSave);
+    onSaved?.(toSave);
+
+    if (!signer) {
+      setSaveState('localOnly');
       return;
     }
 
-    saveHostWorkingHours(pubkey, config);
-    setIsSaved(true);
-    if (onSaved) {
-      onSaved(config);
+    setSaveState('saving');
+    try {
+      const relayList = await nostrPool.fetchHostRelays(pubkey).catch(() => null);
+      const signed = await signer.signEvent(createAvailabilityEventTemplate(toSave));
+      const results = await nostrPool.publishEvent(nostrPool.getBootstrapRelays(relayList?.write), signed);
+      setSaveState(results.some((r) => r.success) ? 'saved' : 'publishFailed');
+    } catch {
+      setSaveState('publishFailed');
     }
   };
 
-  // Ensure current timezone is in options
-  const timezoneOptions = Array.from(new Set([config.timezone, ...COMMON_TIMEZONES])).filter(Boolean);
+  const message =
+    saveState === 'saved'
+      ? t('dashboard.availability.saved')
+      : saveState === 'localOnly'
+        ? t('dashboard.availability.savedLocalOnly')
+        : saveState === 'publishFailed'
+          ? t('dashboard.availability.publishFailed')
+          : null;
 
   return (
-    <Card className="space-y-6">
-      <div>
-        <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-          <Clock className="h-5 w-5 text-stone-700 dark:text-stone-300" />
-          {t('dashboard.workingHours.title')}
-        </h3>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-          {t('dashboard.subtitle')}
-        </p>
-      </div>
+    <form
+      id={formId}
+      onSubmit={(event) => void handleSave(event)}
+      className="grid gap-6 desktop:grid-cols-[minmax(0,1fr)_400px] desktop:items-start"
+    >
+      <Card className="p-5 tablet:p-7">
+        <div className="flex flex-col gap-1 pb-4">
+          <h2 className="font-display text-heading-m font-bold text-ink">{t('dashboard.availability.hoursTitle')}</h2>
+          <p className="font-sans text-ui leading-ui text-muted">{t('dashboard.availability.hoursDescription')}</p>
+        </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        {/* Working Days Selector */}
-        <div className="space-y-2">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-            {t('dashboard.workingHours.workingDays')}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {DAYS_OF_WEEK.map(({ day, labelEn, labelTr }) => {
-              const isSelected = config.workingDays.includes(day);
-              const label = locale === 'tr' ? labelTr : labelEn;
+        <ul>
+          {WEEK.map(({ day, key }) => {
+            const dayName = t(`dashboard.availability.days.${key}`);
+            const on = config.workingDays.includes(day);
+            const hours = dayWindow(day);
+            return (
+              <li key={day} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line py-3.5">
+                <Toggle
+                  checked={on}
+                  onChange={(checked) => toggleDay(day, checked)}
+                  aria-label={t('dashboard.availability.dayToggle', { day: dayName })}
+                />
+                <span
+                  className={cn(
+                    'w-[130px] font-sans text-body leading-ui font-medium',
+                    on ? 'text-ink' : 'text-muted'
+                  )}
+                >
+                  {dayName}
+                </span>
+                {on ? (
+                  <div className="flex items-center gap-3">
+                    <TimeField
+                      value={hours.start}
+                      onChange={(minutes) => setDayTime(day, 'start', minutes)}
+                      aria-label={t('dashboard.availability.startLabel', { day: dayName })}
+                    />
+                    <span aria-hidden="true" className="font-sans text-body leading-ui text-muted">
+                      –
+                    </span>
+                    <TimeField
+                      value={hours.end}
+                      onChange={(minutes) => setDayTime(day, 'end', minutes)}
+                      aria-label={t('dashboard.availability.endLabel', { day: dayName })}
+                    />
+                  </div>
+                ) : (
+                  <span className="font-sans text-ui leading-ui text-muted">{t('dashboard.availability.unavailable')}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
+
+      <div className="flex flex-col gap-6">
+        <Card className="flex flex-col gap-[18px] p-6 tablet:p-6 desktop:p-6">
+          <h2 id={`${formId}-durations`} className="font-display text-heading-xs font-bold text-ink">
+            {t('dashboard.availability.durationsTitle')}
+          </h2>
+          <div role="group" aria-labelledby={`${formId}-durations`} className="flex flex-wrap gap-2">
+            {durationChoices.map((minutes) => {
+              const selected = offeredDurations.includes(minutes);
               return (
                 <button
+                  key={minutes}
                   type="button"
-                  key={day}
-                  onClick={() => handleDayToggle(day)}
-                  className={`h-10 min-w-12 rounded-lg px-3 text-xs font-semibold transition-all cursor-pointer border ${
-                    isSelected
-                      ? 'bg-stone-900 border-stone-900 text-white shadow-xs dark:bg-stone-100 dark:border-stone-100 dark:text-stone-900'
-                      : 'bg-white dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'
-                  }`}
+                  aria-pressed={selected}
+                  onClick={() => toggleDuration(minutes)}
+                  className={cn(
+                    'inline-flex cursor-pointer items-center justify-center rounded-full border px-[18px] py-2.5 font-sans text-body leading-ui font-medium whitespace-nowrap transition-colors',
+                    selected ? 'border-ink bg-ink text-paper' : 'border-line bg-card text-ink hover:border-muted'
+                  )}
                 >
-                  {label}
+                  {t('booking.duration.minutes', { minutes })}
                 </button>
               );
             })}
           </div>
-        </div>
+        </Card>
 
-        {/* Start and End Hours */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-stone-700 dark:text-stone-300">
-              {t('dashboard.workingHours.startHour')}
-            </label>
-            <select
-              value={config.startHour}
-              onChange={handleStartHourChange}
-              className="block w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:focus:ring-stone-100"
-            >
-              {Array.from({ length: 24 }, (_, i) => (
-                <option key={i} value={i}>
-                  {String(i).padStart(2, '0')}:00
-                </option>
-              ))}
-            </select>
-          </div>
+        <Card className="flex flex-col gap-[18px] p-6 tablet:p-6 desktop:p-6">
+          <h2 className="font-display text-heading-xs font-bold text-ink">{t('dashboard.availability.settingsTitle')}</h2>
 
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-stone-700 dark:text-stone-300">
-              {t('dashboard.workingHours.endHour')}
-            </label>
-            <select
-              value={config.endHour}
-              onChange={handleEndHourChange}
-              className="block w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:focus:ring-stone-100"
-            >
-              {Array.from({ length: 24 }, (_, i) => i + 1).map((i) => (
-                <option key={i} value={i}>
-                  {String(i === 24 ? 0 : i).padStart(2, '0')}:00
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Meeting Duration & Buffer Minutes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-stone-700 dark:text-stone-300">
-              {t('dashboard.workingHours.meetingDuration')}
-            </label>
-            <div className="flex gap-2">
-              {APP_CONFIG.allowedDurationsMinutes.map((dur) => (
-                <button
-                  type="button"
-                  key={dur}
-                  onClick={() => handleDurationChange(dur)}
-                  className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors border cursor-pointer ${
-                    (config.defaultDuration || 30) === dur
-                      ? 'bg-stone-900 border-stone-900 text-white dark:bg-stone-100 dark:border-stone-100 dark:text-stone-900'
-                      : 'bg-white dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'
-                  }`}
-                >
-                  {dur} {t('common.minutes')}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-stone-700 dark:text-stone-300">
-              {t('dashboard.workingHours.bufferMinutes')}
-            </label>
-            <select
-              value={config.bufferMinutes || 5}
-              onChange={handleBufferChange}
-              className="block w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:focus:ring-stone-100"
-            >
-              <option value={0}>0 {t('common.minutes')}</option>
-              <option value={5}>5 {t('common.minutes')}</option>
-              <option value={10}>10 {t('common.minutes')}</option>
-              <option value={15}>15 {t('common.minutes')}</option>
-              <option value={30}>30 {t('common.minutes')}</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Timezone Selection */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-            <Globe className="h-3.5 w-3.5 text-stone-400" />
-            {t('dashboard.workingHours.timezone')}
-          </label>
-          <select
+          <TimezoneSelect
             value={config.timezone}
-            onChange={handleTimezoneChange}
-            className="block w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:focus:ring-stone-100"
+            hostTimezone={config.timezone}
+            onChange={(timezone) => update({ timezone })}
+          />
+
+          <Select
+            label={t('dashboard.availability.buffer')}
+            value={config.bufferMinutes ?? 0}
+            onChange={(event) => update({ bufferMinutes: Number(event.target.value) })}
           >
-            {timezoneOptions.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
+            {sortedUnique([...BUFFER_OPTIONS, config.bufferMinutes ?? 0]).map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {bufferLabel(minutes)}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
 
-        {/* Meeting Location / Video Call Link */}
-        <Input
-          label={t('dashboard.workingHours.locationOrLink')}
-          placeholder={t('dashboard.workingHours.locationPlaceholder')}
-          value={config.location || ''}
-          onChange={handleLocationChange}
-          leftIcon={<MapPin className="h-4 w-4" />}
-          helperText={
-            locale === 'tr'
-              ? 'Toplantı davetiyesi .ics dosyalarında ve randevu onayında otomatik olarak yer alır.'
-              : 'Included in generated calendar events and invitation emails.'
-          }
-        />
+          <Select
+            label={t('dashboard.availability.minNotice')}
+            value={config.minNoticeMinutes ?? DEFAULT_NOTICE_MINUTES}
+            onChange={(event) => update({ minNoticeMinutes: Number(event.target.value) })}
+          >
+            {sortedUnique([...NOTICE_OPTIONS, config.minNoticeMinutes ?? DEFAULT_NOTICE_MINUTES]).map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {noticeLabel(minutes)}
+              </option>
+            ))}
+          </Select>
 
-        {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-xs text-red-600 dark:bg-red-950/50 dark:text-red-400">
-            {error}
-          </div>
-        )}
-
-        {isSaved && (
-          <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
-            <CheckCircle className="h-4 w-4 shrink-0" />
-            <span>{t('dashboard.workingHours.savedSuccess')}</span>
-          </div>
-        )}
-
-        <div className="pt-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-[11px] text-stone-500 dark:text-stone-400">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-            <span>{locale === 'tr' ? 'Ayarlar tarayıcınızda güvenle saklanır' : 'Saved locally for your sovereign pubkey'}</span>
-          </div>
-
-          <Button type="submit" variant="primary">
-            {t('dashboard.workingHours.saveButton')}
+          <Button type="submit" size="md" className="w-full" isLoading={saveState === 'saving'}>
+            {saveState === 'saving' ? t('dashboard.availability.saving') : t('dashboard.availability.save')}
           </Button>
-        </div>
-      </form>
-    </Card>
+
+          <div aria-live="polite" className="font-sans text-caption leading-ui font-semibold text-ink empty:hidden">
+            {error ?? message}
+          </div>
+        </Card>
+      </div>
+    </form>
   );
 };

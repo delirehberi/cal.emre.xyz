@@ -1,20 +1,14 @@
-import React from 'react';
-import { Clock, Globe, AlertCircle, Ban } from 'lucide-react';
-import { Card } from '../ui/Card';
+import React, { useId, useState } from 'react';
+import { Globe } from 'lucide-react';
 import { useTranslation } from '../../i18n';
+import { cn } from '../../lib/cn';
 import type { TimeSlot } from '../../lib/calendar/slots';
+import { buildTimezoneOptions, formatTimezoneLabel, getDateParts } from '../../lib/calendar/format';
+import { Select } from '../ui/Input';
+import { Skeleton } from '../ui/Skeleton';
+import { StepCard } from './StepCard';
 
-export interface TimeSlotGridProps {
-  slots: TimeSlot[];
-  selectedSlot: TimeSlot | null;
-  onSelectSlot: (slot: TimeSlot) => void;
-  attendeeTimezone: string;
-  onTimezoneChange?: (tz: string) => void;
-  selectedDate?: string;
-  isLoading?: boolean;
-}
-
-const WORLD_TIMEZONES = [
+export const WORLD_TIMEZONES = [
   'UTC',
   'Europe/Istanbul',
   'Europe/London',
@@ -33,109 +27,139 @@ const WORLD_TIMEZONES = [
   'Asia/Shanghai',
   'Australia/Sydney',
   'Atlantic/Reykjavik',
-];
+] as const;
 
+export interface TimeSlotGridProps {
+  slots: TimeSlot[];
+  selectedSlot: TimeSlot | null;
+  onSelectSlot: (slot: TimeSlot) => void;
+  attendeeTimezone: string;
+  hostTimezone: string;
+  onTimezoneChange: (timezone: string) => void;
+  selectedDate: string;
+  durationMinutes: number;
+  isLoading?: boolean;
+}
+
+/** The time zone picker shared by the slot list and the details form. */
+export const TimezoneSelect: React.FC<{
+  value: string;
+  hostTimezone: string;
+  onChange: (timezone: string) => void;
+}> = ({ value, hostTimezone, onChange }) => {
+  const { t } = useTranslation();
+  const options = buildTimezoneOptions(value, hostTimezone, WORLD_TIMEZONES);
+
+  return (
+    <Select
+      label={t('booking.timeSlots.timezone')}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      icon={<Globe aria-hidden="true" className="h-[18px] w-[18px]" />}
+    >
+      {options.map((timezone) => (
+        <option key={timezone} value={timezone}>
+          {formatTimezoneLabel(timezone)}
+        </option>
+      ))}
+    </Select>
+  );
+};
+
+/** Step 3: the open times of the chosen day. Booked and past times are folded into one line. */
 export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
   slots,
   selectedSlot,
   onSelectSlot,
   attendeeTimezone,
+  hostTimezone,
   onTimezoneChange,
+  selectedDate,
+  durationMinutes,
   isLoading = false,
 }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const [showUnavailable, setShowUnavailable] = useState(false);
+  const foldedId = useId();
 
-  const timezoneList = Array.from(new Set([attendeeTimezone, ...WORLD_TIMEZONES])).filter(Boolean);
+  const open = slots.filter((slot) => slot.available);
+  const unavailable = slots.filter((slot) => !slot.available);
+  const { weekday, dayMonth } = getDateParts(selectedDate, locale);
 
   return (
-    <Card className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-100 dark:border-stone-800 pb-3">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-stone-500" />
-          <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-            {t('booking.timeSlotGrid.title')}
-          </h3>
-        </div>
+    <StepCard step={3} title={t('booking.steps.time')}>
+      <TimezoneSelect value={attendeeTimezone} hostTimezone={hostTimezone} onChange={onTimezoneChange} />
 
-        {/* Changeable Timezone Selector */}
-        <div className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50/80 px-2.5 py-1 text-xs text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
-          <Globe className="h-3.5 w-3.5 text-stone-500 shrink-0" />
-          {onTimezoneChange ? (
-            <select
-              value={attendeeTimezone}
-              onChange={(e) => onTimezoneChange(e.target.value)}
-              className="bg-transparent text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none cursor-pointer max-w-[180px] truncate"
-              title={t('booking.timeSlotGrid.changeTimezone')}
-            >
-              {timezoneList.map((tz) => (
-                <option key={tz} value={tz} className="bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100">
-                  {tz}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="truncate max-w-[180px] font-medium">{attendeeTimezone}</span>
-          )}
-        </div>
-      </div>
+      <p className="font-sans text-ui leading-ui font-medium text-muted">
+        {t('booking.timeSlots.dayLine', {
+          weekday,
+          dayMonth,
+          duration: t('booking.duration.minutes', { minutes: durationMinutes }),
+        })}
+      </p>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 py-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={`skeleton-slot-${i}`}
-              className="h-11 rounded-lg bg-stone-100 dark:bg-stone-800/60 animate-pulse"
-            />
+        <div className="grid grid-cols-2 gap-2.5" aria-busy="true">
+          {Array.from({ length: 6 }, (_, index) => (
+            <Skeleton key={index} className="h-12 rounded-button" />
           ))}
         </div>
-      ) : slots.length === 0 ? (
-        <div className="py-8 text-center space-y-2">
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400">
-            <AlertCircle className="h-5 w-5" />
-          </div>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            {t('booking.timeSlotGrid.noSlotsForDate')}
-          </p>
-        </div>
+      ) : open.length === 0 ? (
+        <p className="rounded-button border border-dashed border-line px-3.5 py-3 font-sans text-caption leading-ui text-muted">
+          {t('booking.timeSlots.noSlots')}
+        </p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
-          {slots.map((slot) => {
-            const isSelected =
-              selectedSlot?.start === slot.start && selectedSlot?.end === slot.end;
-
-            if (!slot.available) {
-              return (
-                <div
-                  key={`${slot.start}-${slot.end}`}
-                  title={slot.reason === 'booked' ? t('booking.timeSlotGrid.busySlotTooltip') : undefined}
-                  className="flex items-center justify-between rounded-lg border border-stone-200/60 bg-stone-50/70 px-3 py-2.5 text-xs text-stone-400 dark:border-stone-800/60 dark:bg-stone-900/40 dark:text-stone-600 cursor-not-allowed select-none"
-                >
-                  <span className="line-through">{slot.formattedStartTime}</span>
-                  {slot.reason === 'booked' && (
-                    <Ban className="h-3 w-3 text-stone-400 dark:text-stone-600 opacity-60" />
-                  )}
-                </div>
-              );
-            }
-
+        <div role="group" aria-label={t('booking.timeSlots.slotsLabel')} className="grid grid-cols-2 gap-2.5">
+          {open.map((slot) => {
+            const selected = selectedSlot?.start === slot.start;
             return (
               <button
-                key={`${slot.start}-${slot.end}`}
+                key={slot.start}
                 type="button"
+                aria-pressed={selected}
                 onClick={() => onSelectSlot(slot)}
-                className={`flex items-center justify-center rounded-lg border px-3 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
-                  isSelected
-                    ? 'border-stone-900 bg-stone-900 text-stone-50 shadow-sm dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900 ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-1'
-                    : 'border-stone-200 bg-white text-stone-800 hover:border-stone-900 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:border-stone-300 dark:hover:bg-stone-900'
-                }`}
+                className={cn(
+                  'flex h-12 min-w-0 cursor-pointer items-center justify-center gap-2.5 rounded-button border font-mono text-body leading-ui font-medium text-ink transition-colors',
+                  selected ? 'border-slot bg-slot-soft ring-1 ring-slot ring-inset' : 'border-line bg-card hover:border-muted'
+                )}
               >
-                <span>{slot.formattedStartTime}</span>
+                <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-slot" />
+                {slot.formattedStartTime}
               </button>
             );
           })}
         </div>
       )}
-    </Card>
+
+      {!isLoading && unavailable.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-2 rounded-button border border-dashed border-line px-3.5 py-3 font-sans text-caption leading-ui">
+            <p className="min-w-0 flex-1 text-muted">{t('booking.timeSlots.folded', { count: unavailable.length })}</p>
+            <button
+              type="button"
+              aria-expanded={showUnavailable}
+              aria-controls={foldedId}
+              onClick={() => setShowUnavailable((value) => !value)}
+              className="shrink-0 cursor-pointer rounded-control font-semibold text-ink hover:underline"
+            >
+              {showUnavailable ? t('booking.timeSlots.hide') : t('booking.timeSlots.show')}
+            </button>
+          </div>
+          {showUnavailable && (
+            <ul id={foldedId} aria-label={t('booking.timeSlots.unavailableLabel')} className="grid grid-cols-2 gap-2.5">
+              {unavailable.map((slot) => (
+                <li
+                  key={slot.start}
+                  title={slot.reason === 'booked' ? t('booking.timeSlots.busyTooltip') : undefined}
+                  className="flex h-12 items-center justify-center rounded-button border border-dashed border-line font-mono text-body leading-ui font-medium text-muted line-through opacity-70"
+                >
+                  {slot.formattedStartTime}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </StepCard>
   );
 };
