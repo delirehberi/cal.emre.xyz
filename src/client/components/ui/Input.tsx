@@ -6,7 +6,7 @@ const FIELD_LABEL = 'block font-sans text-caption leading-ui font-medium text-mu
 
 /** Box shared by input, textarea and select. */
 const FIELD_BOX =
-  'block w-full rounded-button border bg-card px-3.5 py-3 font-sans text-body leading-ui text-ink placeholder:text-muted transition-colors focus:border-ink focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50';
+  'block w-full rounded-button border bg-card px-3.5 py-3 font-sans text-body leading-ui text-ink placeholder:text-muted transition-colors focus:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50';
 
 const boxBorder = (error?: string) => (error ? 'border-ink' : 'border-line');
 

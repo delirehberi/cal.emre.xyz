@@ -31,7 +31,7 @@ export interface BookedEventsListProps {
 const SectionHeader: React.FC<{ title: string; count: number; action?: React.ReactNode }> = ({ title, count, action }) => (
   <div className="flex items-center gap-2.5">
     <h2 className="font-display text-heading-s font-bold text-ink tablet:text-heading-l">{title}</h2>
-    <span className="rounded-full bg-line px-[9px] py-[3px] font-mono text-small leading-ui font-medium text-muted">
+    <span className="rounded-full bg-line px-[9px] py-[3px] font-mono text-small leading-ui font-medium text-ink">
       {count}
     </span>
     {action && <div className="ml-auto">{action}</div>}

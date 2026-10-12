@@ -51,7 +51,7 @@ export const TimeField: React.FC<TimeFieldProps> = ({ value, onChange, className
       }}
       onBlur={() => setDraft(formatMinutes(parseTimeInput(draft) ?? value))}
       className={cn(
-        'w-[72px] rounded-control border border-line bg-paper px-3.5 py-[9px] text-center font-mono text-ui leading-ui font-medium text-ink focus:border-ink focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
+        'w-[72px] rounded-control border border-line bg-paper px-3.5 py-[9px] text-center font-mono text-ui leading-ui font-medium text-ink focus:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
         className
       )}
       {...props}
