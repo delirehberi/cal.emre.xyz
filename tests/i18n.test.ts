@@ -31,17 +31,15 @@ describe('i18n Dictionary Parity & Integrity', () => {
   });
 
   it('should correctly resolve nested translation keys', () => {
-    const titleEn = resolveTranslation(en, 'header.title');
-    expect(titleEn).toBe('cal.emre.xyz');
-
-    const titleTr = resolveTranslation(tr, 'header.title');
-    expect(titleTr).toBe('cal.emre.xyz');
-
-    const subEn = resolveTranslation(en, 'header.subtitle');
-    expect(subEn).toBe('Sovereign Scheduling with Nostr NIP-52');
-
-    const subTr = resolveTranslation(tr, 'header.subtitle');
-    expect(subTr).toBe('Nostr NIP-52 ile Egemen Randevu ve Takvim Sistemi');
+    expect(resolveTranslation(en, 'header.home')).toBe('Home');
+    expect(resolveTranslation(tr, 'header.home')).toBe('Ana Sayfa');
+    expect(resolveTranslation(en, 'header.about')).toBe('About');
+    expect(resolveTranslation(tr, 'header.about')).toBe('Hakkında');
+    expect(resolveTranslation(tr, 'header.support')).toBe('Destek');
+    expect(resolveTranslation(tr, 'header.login')).toBe('Giriş');
+    expect(resolveTranslation(tr, 'header.logout')).toBe('Çıkış Yap');
+    expect(resolveTranslation(tr, 'header.dashboard')).toBe('Yönetim Paneli');
+    expect(resolveTranslation(tr, 'header.copyNpub')).toBe('npub’i kopyala');
   });
 
   it('should replace dynamic template interpolation parameters', () => {

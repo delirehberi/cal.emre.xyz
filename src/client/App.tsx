@@ -30,13 +30,6 @@ export const MainLayout: React.FC = () => {
     };
   }, []);
 
-  const handleNavigate = (path: string) => {
-    setCurrentPath(path);
-    if (window.history.pushState) {
-      window.history.pushState(null, '', path);
-    }
-  };
-
   const isDashboard = currentPath === '/dashboard' || currentPath === 'dashboard' || currentPath.startsWith('/dashboard');
 
   // Determine host identifier from route path (e.g. /npub1... or /alice@domain.com)
@@ -52,7 +45,7 @@ export const MainLayout: React.FC = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink transition-colors">
-      <Header currentPath={currentPath} onNavigate={handleNavigate} />
+      <Header currentPath={currentPath} />
       <main className="flex-1">
         {isDashboard ? (
           <DashboardPage />

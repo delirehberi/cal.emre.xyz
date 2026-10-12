@@ -24,17 +24,21 @@ export interface TranslationDictionary {
     actions: string;
   };
   header: {
-    title: string;
-    subtitle: string;
     homeAria: string;
     home: string;
+    about: string;
     dashboard: string;
     support: string;
     login: string;
     logout: string;
+    copyNpub: string;
     themeLight: string;
     themeDark: string;
     language: string;
+    primaryNav: string;
+    userMenu: string;
+    openMenu: string;
+    closeMenu: string;
   };
   booking: {
     hostCard: {
