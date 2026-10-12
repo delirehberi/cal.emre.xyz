@@ -176,12 +176,8 @@ export const tr: TranslationDictionary = {
     },
   },
   footer: {
-    description: 'cal.emre.xyz, Nostr protokolü üzerinde geliştirilmiş açık kaynaklı, egemen bir takvim ve randevu platformudur.',
-    nip52Spec: 'NIP-52 Takvim Etkinlikleri Belirtimi',
-    whatIsNostr: 'Nostr Nedir? (nostr.com)',
-    nostrOrgTr: 'Nostr Türkiye Topluluğu (nostr.org.tr)',
-    githubRepo: 'GitHub Deposu',
-    license: 'MIT Lisansı',
+    nostrBadge: 'nostr.org.tr topluluk girişimidir',
+    linksLabel: 'Alt bağlantılar',
   },
   errors: {
     generic: 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',

@@ -168,7 +168,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
           </a>
 
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
             onClick={handleDownloadIcs}
             leftIcon={<Download className="h-3.5 w-3.5" />}
@@ -191,7 +191,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
             className="block w-full truncate rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-mono text-stone-700 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300 select-all"
           />
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
             onClick={handleCopyNaddr}
             leftIcon={
@@ -230,7 +230,7 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
                 className="block w-full truncate rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-mono text-amber-900 dark:border-amber-800 dark:bg-stone-950 dark:text-amber-200 select-all"
               />
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={handleCopyNsec}
                 leftIcon={

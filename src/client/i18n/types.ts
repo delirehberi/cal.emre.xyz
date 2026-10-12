@@ -180,12 +180,8 @@ export interface TranslationDictionary {
     };
   };
   footer: {
-    description: string;
-    nip52Spec: string;
-    whatIsNostr: string;
-    nostrOrgTr: string;
-    githubRepo: string;
-    license: string;
+    nostrBadge: string;
+    linksLabel: string;
   };
   errors: {
     generic: string;

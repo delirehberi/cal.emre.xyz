@@ -58,7 +58,7 @@ export const GuestKeyModal: React.FC<GuestKeyModalProps> = ({
               className="block w-full truncate rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-mono text-stone-700 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300 select-all"
             />
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => handleCopy('npub', npub)}
               leftIcon={
@@ -87,7 +87,7 @@ export const GuestKeyModal: React.FC<GuestKeyModalProps> = ({
               className="block w-full truncate rounded-lg border border-amber-300 bg-amber-50/50 px-3 py-2 text-xs font-mono text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300 select-all"
             />
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => handleCopy('nsec', nsec)}
               leftIcon={

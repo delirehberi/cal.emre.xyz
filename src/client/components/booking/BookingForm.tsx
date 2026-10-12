@@ -290,7 +290,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
         <div className="flex items-center gap-3 pt-2">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={onCancel}
             disabled={isSubmitting}
           >

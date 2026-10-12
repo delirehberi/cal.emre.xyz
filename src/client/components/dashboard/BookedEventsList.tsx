@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import { StatusBadge } from '../ui/StatusBadge';
 import { Modal } from '../ui/Modal';
 import { useTranslation } from '../../i18n';
 import type { NostrSigner } from '../../lib/nostr/signer';
@@ -258,33 +258,13 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
   const getStatusBadge = (status: HostAppointment['effectiveStatus']) => {
     switch (status) {
       case 'accepted':
-        return (
-          <Badge variant="success" className="gap-1">
-            <CheckCircle className="h-3 w-3" />
-            {t('dashboard.appointments.statusAccepted')}
-          </Badge>
-        );
+        return <StatusBadge kind="confirmed">{t('dashboard.appointments.statusAccepted')}</StatusBadge>;
       case 'tentative':
-        return (
-          <Badge variant="warning" className="gap-1">
-            <Clock className="h-3 w-3" />
-            {t('dashboard.appointments.statusTentative')}
-          </Badge>
-        );
+        return <StatusBadge kind="pending">{t('dashboard.appointments.statusTentative')}</StatusBadge>;
       case 'declined':
-        return (
-          <Badge variant="danger" className="gap-1">
-            <XCircle className="h-3 w-3" />
-            {t('dashboard.appointments.statusDeclined')}
-          </Badge>
-        );
+        return <StatusBadge kind="declined">{t('dashboard.appointments.statusDeclined')}</StatusBadge>;
       case 'canceled':
-        return (
-          <Badge variant="neutral" className="gap-1 line-through opacity-75">
-            <Trash2 className="h-3 w-3" />
-            {t('dashboard.appointments.cancelAction')}
-          </Badge>
-        );
+        return <StatusBadge kind="cancelled">{t('dashboard.appointments.cancelAction')}</StatusBadge>;
     }
   };
 
@@ -319,7 +299,7 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
         </div>
 
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={fetchAppointments}
           isLoading={isLoading}
@@ -522,7 +502,7 @@ export const BookedEventsList: React.FC<BookedEventsListProps> = ({
                 {/* Actions Row */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => handleDownloadIcs(appointment)}
                     leftIcon={<Download className="h-3.5 w-3.5" />}

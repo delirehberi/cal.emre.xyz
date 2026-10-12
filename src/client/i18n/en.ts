@@ -176,12 +176,8 @@ export const en: TranslationDictionary = {
     },
   },
   footer: {
-    description: 'cal.emre.xyz is an open-source, sovereign calendar and appointment platform built on the Nostr protocol.',
-    nip52Spec: 'NIP-52 Calendar Events Specification',
-    whatIsNostr: 'What is Nostr? (nostr.com)',
-    nostrOrgTr: 'Nostr Türkiye Topluluğu (nostr.org.tr)',
-    githubRepo: 'GitHub Repository',
-    license: 'MIT License',
+    nostrBadge: 'A nostr.org.tr community initiative',
+    linksLabel: 'Footer links',
   },
   errors: {
     generic: 'An unexpected error occurred. Please try again.',

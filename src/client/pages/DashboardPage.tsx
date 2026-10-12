@@ -149,7 +149,7 @@ export const DashboardPage: React.FC = () => {
             className="block w-full truncate rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-mono text-stone-800 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-200 select-all"
           />
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
             onClick={handleCopyLink}
             leftIcon={

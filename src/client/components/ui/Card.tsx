@@ -1,38 +1,25 @@
 import React from 'react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '../../lib/cn';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'flat' | 'subtle';
+  /** `default` sits on the paper background; `flat` is the empty-state/inset surface. */
+  variant?: 'default' | 'flat';
 }
 
-export const Card: React.FC<CardProps> = ({
-  children,
-  className,
-  variant = 'default',
-  ...props
-}) => {
-  const variantStyles = {
-    default:
-      'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-sm',
-    flat:
-      'bg-stone-50 dark:bg-stone-950 border border-stone-200/70 dark:border-stone-800/70',
-    subtle:
-      'bg-stone-100/60 dark:bg-stone-900/50 border border-transparent',
-  };
+const VARIANT_STYLES = {
+  default: 'bg-card',
+  flat: 'bg-paper',
+} as const;
 
-  return (
-    <div
-      className={twMerge(
-        clsx(
-          'rounded-xl p-5 md:p-6 transition-colors',
-          variantStyles[variant],
-          className
-        )
-      )}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
+export const Card: React.FC<CardProps> = ({ children, className, variant = 'default', ...props }) => (
+  <div
+    className={cn(
+      'rounded-card border border-line p-5 transition-colors tablet:p-6 desktop:p-7',
+      VARIANT_STYLES[variant],
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
+);
