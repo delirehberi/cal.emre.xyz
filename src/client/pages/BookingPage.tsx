@@ -362,6 +362,8 @@ export const BookingPage: React.FC<BookingPageProps> = ({ identifier }) => {
       attendeeTimezone={bookingResult.attendeeTimezone}
       naddr={bookingResult.naddr}
       guestKeys={bookingResult.guestKeys}
+      signedEvent={bookingResult.signedEvent}
+      publishResults={bookingResult.publishResults}
       onBookAnother={handleBookAnother}
     />
   ) : selectedSlot && formOpen ? (

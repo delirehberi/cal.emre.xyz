@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { decodeNaddr, encodeNpub, type NaddrParams } from '../lib/nostr/keys';
 import { parseTimeCalendarEvent, createCalendarRSVPTemplate, type TimeCalendarEvent, type CalendarRSVP } from '../lib/nostr/nip52';
 import { nostrPool, type HostProfile } from '../lib/nostr/relays';
+import type { Event } from 'nostr-tools';
+import { RelayReport } from '../components/ui/RelayReport';
 import { formatSlotTime } from '../lib/calendar/slots';
 import { generateICS, generateGoogleCalendarUrl, generateOutlookCalendarUrl } from '../lib/calendar/ics';
 import { decryptBookingDetails, isLikelyEncrypted, type EncryptedBookingPayload } from '../lib/nostr/encryption';
@@ -48,6 +50,7 @@ export const EventDetailsPage: React.FC<EventDetailsPageProps> = ({ naddr }) => 
   const { user, signer, loginAsGuest } = useAuth();
 
   const [event, setEvent] = useState<TimeCalendarEvent | null>(null);
+  const [signedEvent, setSignedEvent] = useState<Event | null>(null);
   const [, setRsvps] = useState<CalendarRSVP[]>([]);
   const [profilesMap, setProfilesMap] = useState<Record<string, HostProfile>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +115,7 @@ export const EventDetailsPage: React.FC<EventDetailsPageProps> = ({ naddr }) => 
 
       const parsed = parseTimeCalendarEvent(rawEvent);
       setEvent(parsed);
+      setSignedEvent(rawEvent);
 
       // Fetch RSVPs
       const fetchedRsvps = await nostrPool.fetchCalendarRSVPs([parsed.coordinate], targetRelays);
@@ -537,6 +541,17 @@ export const EventDetailsPage: React.FC<EventDetailsPageProps> = ({ naddr }) => 
             </button>
           </div>
         </div>
+
+        {/* Relay broadcast: re-publish the signed event to host, creator, attendee and default relays */}
+        {signedEvent && (
+          <RelayReport
+            results={[]}
+            allowExtraRelay
+            onBroadcast={(extraRelay) =>
+              nostrPool.broadcastEvent(signedEvent, extraRelay ? [extraRelay] : undefined)
+            }
+          />
+        )}
       </Card>
     </div>
   );

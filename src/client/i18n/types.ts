@@ -134,6 +134,24 @@ export interface TranslationDictionary {
       bookAnother: string;
     };
   };
+  relayReport: {
+    title: string;
+    summary: string;
+    allFailed: string;
+    accepted: string;
+    failed: string;
+    sourceHost: string;
+    sourceCreator: string;
+    sourceAttendee: string;
+    sourceExtra: string;
+    sourceDefault: string;
+    broadcast: string;
+    broadcasting: string;
+    broadcastDone: string;
+    broadcastFailed: string;
+    extraRelayLabel: string;
+    extraRelayPlaceholder: string;
+  };
   eventDetails: {
     title: string;
     notFound: string;

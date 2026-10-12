@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Calendar, Check, Clock, Copy, Download, ExternalLink, Key } from 'lucide-react';
+import type { Event } from 'nostr-tools';
 import { Button } from '../ui/Button';
+import { RelayReport } from '../ui/RelayReport';
+import { nostrPool, type PublishResult } from '../../lib/nostr/relays';
 import { useTranslation } from '../../i18n';
 import { getDateParts } from '../../lib/calendar/format';
 import { eventHref } from '../../lib/router';
@@ -24,6 +27,8 @@ export interface BookingSuccessProps {
   attendeeTimezone: string;
   naddr: string;
   guestKeys?: { nsec: string; npub: string } | null;
+  signedEvent: Event;
+  publishResults: PublishResult[];
   onBookAnother: () => void;
 }
 
@@ -48,6 +53,8 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
   attendeeTimezone,
   naddr,
   guestKeys,
+  signedEvent,
+  publishResults,
   onBookAnother,
 }) => {
   const { t, locale } = useTranslation();
@@ -203,6 +210,11 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
           </div>
         </div>
       )}
+
+      <RelayReport
+        results={publishResults}
+        onBroadcast={(extraRelay) => nostrPool.broadcastEvent(signedEvent, extraRelay ? [extraRelay] : undefined)}
+      />
 
       <Button variant="secondary" className="w-full" onClick={onBookAnother} rightIcon={<ArrowRight aria-hidden="true" className="h-4 w-4" />}>
         {t('booking.success.bookAnother')}

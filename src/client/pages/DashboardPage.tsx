@@ -34,7 +34,7 @@ export const DashboardPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { appointments, setAppointments, isLoading, error, reload } = useHostAppointments(user?.pubkey);
+  const { appointments, setAppointments, isLoading, error, reload, hostRelays } = useHostAppointments(user?.pubkey);
 
   if (!isLoggedIn || !user) {
     return (
@@ -159,6 +159,7 @@ export const DashboardPage: React.FC = () => {
           <BookedEventsList
             pubkey={user.pubkey}
             signer={signer}
+            relays={hostRelays}
             hostTimezone={hostTimezone}
             appointments={appointments}
             onAppointmentsChange={setAppointments}

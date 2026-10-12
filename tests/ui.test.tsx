@@ -16,6 +16,7 @@ import { NostrEduBanner } from '../src/client/components/booking/NostrEduBanner'
 import { BookingSuccess } from '../src/client/components/booking/BookingSuccess';
 import { Footer } from '../src/client/components/layout/Footer';
 import { LoadBar } from '../src/client/components/ui/LoadBar';
+import { RelayReport } from '../src/client/components/ui/RelayReport';
 import { BookingPage } from '../src/client/pages/BookingPage';
 import { APP_CONFIG } from '../src/config';
 import { I18nProvider } from '../src/client/i18n';
@@ -374,6 +375,16 @@ describe('Booking Components Rendering Tests', () => {
               npub: 'npub1qqqx...',
               nsec: 'nsec1qqqx...',
             }}
+            signedEvent={{
+              id: 'id',
+              pubkey: '3bf0c63fcb93463407af97b5e0907d743712d0ec403c3167f56bc1b1433d3b2f',
+              created_at: 1,
+              kind: 31923,
+              tags: [],
+              content: '',
+              sig: 'sig',
+            }}
+            publishResults={[{ relay: 'wss://nostr.mom', success: true, sources: ['creator'] }]}
             onBookAnother={() => {}}
           />
         ),
@@ -382,6 +393,46 @@ describe('Booking Components Rendering Tests', () => {
     expect(html).toContain('Appointment with Emre');
     expect(html).toContain('naddr1qqqx...');
     expect(html).toContain('nsec1qqqx...');
+    expect(html).toContain('Technical details');
+    expect(html).toContain('1 of 1 relays accepted this event');
+  });
+
+  it('renders RelayReport with per-relay status, sources, errors and a broadcast button', () => {
+    const html = renderToString(
+      wrapper({
+        children: (
+          <RelayReport
+            results={[
+              { relay: 'wss://nostr.mom', success: true, sources: ['creator', 'default'] },
+              { relay: 'wss://down.example.org', success: false, error: 'Publish timeout', sources: ['host'] },
+            ]}
+            onBroadcast={async () => []}
+            allowExtraRelay
+          />
+        ),
+      })
+    );
+    expect(html).toContain('1 of 2 relays accepted this event');
+    expect(html).toContain('wss://nostr.mom');
+    expect(html).toContain('wss://down.example.org');
+    expect(html).toContain('Publish timeout');
+    expect(html).toContain('Creator');
+    expect(html).toContain('Broadcast to relays');
+    expect(html).toContain('Extra relay (optional)');
+  });
+
+  it('opens RelayReport and warns when no relay accepted the event', () => {
+    const html = renderToString(
+      wrapper({
+        children: (
+          <RelayReport results={[{ relay: 'wss://down.example.org', success: false, error: 'blocked' }]} />
+        ),
+      })
+    );
+    expect(html).toContain('0 of 1 relays accepted this event');
+    expect(html).toContain('No relay accepted the event');
+    expect(html).toContain('open=""');
+    expect(html).not.toContain('Broadcast to relays');
   });
 
   it('renders Footer with the Nostr community badge and the three links', () => {

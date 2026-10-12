@@ -11,7 +11,9 @@ import { cn } from '../../lib/cn';
 import type { TimeSlot } from '../../lib/calendar/slots';
 import { getDateParts } from '../../lib/calendar/format';
 import type { HostProfile } from '../../lib/nostr/relays';
-import { nostrPool } from '../../lib/nostr/relays';
+import { nostrPool, type PublishResult } from '../../lib/nostr/relays';
+import { pickRelayHints } from '../../lib/nostr/nip65';
+import type { Event } from 'nostr-tools';
 import { createTimeCalendarEventTemplate } from '../../lib/nostr/nip52';
 import { encodeNaddr } from '../../lib/nostr/keys';
 import { APP_CONFIG } from '../../../config';
@@ -37,6 +39,10 @@ export interface BookingResult {
   attendeeTimezone: string;
   naddr: string;
   guestKeys?: { nsec: string; npub: string } | null;
+  /** The signed event, kept so the success view can re-broadcast it. */
+  signedEvent: Event;
+  /** Per-relay outcome of the first publish. */
+  publishResults: PublishResult[];
 }
 
 export interface BookingFormProps {
@@ -187,12 +193,15 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       let activeSigner = signer;
       let guestCredentials: { nsec: string; npub: string } | null = null;
       let attendeePubkey = user?.pubkey;
+      // A freshly generated guest key has no relay list to look up.
+      let hasPublishedRelayList = true;
 
       // Visitors without a Nostr identity get an ephemeral guest key.
       if (!activeSigner || !attendeePubkey) {
         const guest = loginAsGuest();
         activeSigner = guest.signer;
         attendeePubkey = await activeSigner.getPublicKey();
+        hasPublishedRelayList = false;
         guestCredentials = { nsec: guest.nsec, npub: guest.npub };
       }
 
@@ -232,22 +241,30 @@ export const BookingForm: React.FC<BookingFormProps> = ({
         location: 'Online Nostr Meeting',
         attendees: [
           { pubkey: attendeePubkey, role: 'attendee' },
-          { pubkey: hostPubkey, role: 'host' },
+          { pubkey: hostPubkey, role: 'host', relay: hostRelays[0] },
           ...participantPubkeys(invited).map((pubkey) => ({ pubkey, role: 'attendee' as const })),
         ],
       });
 
       const signedEvent = await activeSigner.signEvent(eventTemplate);
 
-      const targetRelays = hostRelays.length > 0 ? hostRelays : Array.from(APP_CONFIG.defaultRelays);
+      // Host relays + the booker's relays + invited participants' relays + app defaults.
+      const targets = await nostrPool.resolvePublishTargets({
+        hostRelays,
+        creatorPubkey: hasPublishedRelayList ? attendeePubkey : undefined,
+        attendeePubkeys: participantPubkeys(invited),
+      });
       const naddr = encodeNaddr({
         identifier: eventIdentifier,
         pubkey: signedEvent.pubkey,
         kind: 31923,
-        relays: targetRelays.slice(0, 3),
+        relays: pickRelayHints(targets),
       });
 
-      await nostrPool.publishEvent(targetRelays, signedEvent);
+      const publishResults = await nostrPool.publishToTargets(targets, signedEvent);
+      if (!publishResults.some((result) => result.success)) {
+        throw new Error(t('relayReport.allFailed'));
+      }
 
       // Confirmation e-mails never block a booking that is already published.
       const recipients: Array<{ to: string; recipientName: string; own: boolean }> = [
@@ -279,6 +296,8 @@ export const BookingForm: React.FC<BookingFormProps> = ({
         attendeeTimezone,
         naddr,
         guestKeys: guestCredentials,
+        signedEvent,
+        publishResults,
       });
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));

@@ -1,6 +1,15 @@
 import { SimplePool, type Event, type Filter } from 'nostr-tools';
 import { APP_CONFIG } from '../../../config';
-import { parseRelayList, parseContactRelays, filterHealthyRelays, buildCacheRelayUrl, type RelayList } from './nip65';
+import {
+  parseRelayList,
+  parseContactRelays,
+  filterHealthyRelays,
+  buildPublishTargets,
+  type RelayList,
+  type RelaySource,
+  type PublishTarget,
+  type RelaySourceGroup,
+} from './nip65';
 import {
   parseTimeCalendarEvent,
   parseDateCalendarEvent,
@@ -30,6 +39,18 @@ export interface PublishResult {
   relay: string;
   success: boolean;
   error?: string;
+  sources?: RelaySource[];
+}
+
+export interface PublishTargetOptions {
+  /** Relays of the event's host (both read and write: the host must be able to see the event). */
+  hostRelays?: string[];
+  /** Author of the event; their outbox (write) relays receive a copy. */
+  creatorPubkey?: string;
+  /** Other participants; their inbox (read) relays receive a copy. */
+  attendeePubkeys?: string[];
+  /** Operator supplied relays, e.g. a relay where the event is known to exist. */
+  extraRelays?: string[];
 }
 
 export interface HostAppointment {
@@ -63,19 +84,10 @@ class RelayPoolManager {
   }
 
   /**
-   * Returns read-only query relays.
-   * If a cache relay is configured, bundles upstream bootstrap relays into a single cache relay query URL.
-   * Otherwise falls back to direct bootstrap relays.
+   * Returns the relays used for queries: custom relays merged with the bootstrap relays.
    */
   getReadRelays(customRelays?: string[]): string[] {
-    const upstreams = this.getBootstrapRelays(customRelays);
-    if (APP_CONFIG.cacheRelayUrl) {
-      const cacheUrl = buildCacheRelayUrl(upstreams, APP_CONFIG.cacheRelayUrl);
-      if (cacheUrl) {
-        return [cacheUrl];
-      }
-    }
-    return upstreams;
+    return this.getBootstrapRelays(customRelays);
   }
 
   /**
@@ -447,17 +459,91 @@ class RelayPoolManager {
   }
 
   /**
+   * Resolves the relays an event must reach: host relays, the creator's write relays,
+   * attendees' read relays, any extra relays and finally the app default relays.
+   */
+  async resolvePublishTargets(options: PublishTargetOptions): Promise<PublishTarget[]> {
+    const creatorGroup = await this.fetchRelayGroup('creator', options.creatorPubkey ? [options.creatorPubkey] : [], 'write');
+    const attendeeGroup = await this.fetchRelayGroup('attendee', options.attendeePubkeys ?? [], 'read');
+
+    const groups: RelaySourceGroup[] = [
+      { source: 'host', relays: options.hostRelays ?? [] },
+      creatorGroup,
+      attendeeGroup,
+      { source: 'extra', relays: options.extraRelays ?? [] },
+      { source: 'default', relays: Array.from(APP_CONFIG.defaultRelays) },
+    ];
+    return buildPublishTargets(groups);
+  }
+
+  /**
+   * Publishes an event to resolved targets, tagging every result with the sources that selected the relay.
+   */
+  async publishToTargets(targets: PublishTarget[], signedEvent: Event): Promise<PublishResult[]> {
+    const results = await this.publishEvent(targets.map((target) => target.url), signedEvent);
+    const sourcesByRelay = new Map(targets.map((target) => [target.url, target.sources]));
+    return results.map((result) => ({ ...result, sources: sourcesByRelay.get(result.relay) }));
+  }
+
+  /**
+   * Re-publishes an already signed event (never re-signs or mutates it) to the host, creator,
+   * attendee and default relays, plus any extra relays.
+   */
+  async broadcastEvent(signedEvent: Event, extraRelays?: string[]): Promise<PublishResult[]> {
+    const attendeePubkeys = signedEvent.tags
+      .filter((tag) => tag[0] === 'p' && tag[1])
+      .map((tag) => tag[1]);
+    const hostPubkeys = signedEvent.tags
+      .filter((tag) => tag[0] === 'p' && tag[1] && tag[3] === 'host')
+      .map((tag) => tag[1]);
+
+    const hostGroup = await this.fetchRelayGroup('host', hostPubkeys, 'all');
+    const targets = await this.resolvePublishTargets({
+      hostRelays: hostGroup.relays,
+      creatorPubkey: signedEvent.pubkey,
+      attendeePubkeys: attendeePubkeys.filter((pubkey) => !hostPubkeys.includes(pubkey)),
+      extraRelays,
+    });
+    return this.publishToTargets(targets, signedEvent);
+  }
+
+  /**
+   * Loads a signed event by id from the query relays and broadcasts it unchanged.
+   */
+  async broadcastEventById(
+    eventId: string,
+    queryRelays?: string[],
+    extraRelays?: string[]
+  ): Promise<PublishResult[]> {
+    const signedEvent = await this.pool.get(this.getReadRelays(queryRelays), { ids: [eventId], limit: 1 });
+    if (!signedEvent) {
+      throw new Error(`Event ${eventId} was not found on any query relay`);
+    }
+    return this.broadcastEvent(signedEvent, extraRelays);
+  }
+
+  private async fetchRelayGroup(
+    source: RelaySource,
+    pubkeys: string[],
+    usage: keyof RelayList
+  ): Promise<RelaySourceGroup> {
+    const lists = await Promise.allSettled(Array.from(new Set(pubkeys)).map((pubkey) => this.fetchHostRelays(pubkey)));
+    const relays: string[] = [];
+    for (const list of lists) {
+      if (list.status === 'fulfilled') {
+        relays.push(...list.value[usage]);
+      } else {
+        console.warn(`Failed to resolve ${source} relays`, list.reason);
+      }
+    }
+    return { source, relays };
+  }
+
+  /**
    * Closes all active connections.
    */
   close(): void {
-    const relaysToClose = new Set<string>(APP_CONFIG.defaultRelays);
-    if (APP_CONFIG.cacheRelayUrl) {
-      const cacheUrl = buildCacheRelayUrl(Array.from(APP_CONFIG.defaultRelays), APP_CONFIG.cacheRelayUrl);
-      if (cacheUrl) {
-        relaysToClose.add(cacheUrl);
-      }
-    }
-    this.pool.close(Array.from(relaysToClose));
+    this.pool.close(Array.from(APP_CONFIG.defaultRelays));
   }
 }
 

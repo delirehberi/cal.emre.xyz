@@ -8,11 +8,14 @@ export interface HostAppointmentsState {
   isLoading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  /** The host's own NIP-65 relays (empty until resolved or when none are published). */
+  hostRelays: string[];
 }
 
 /** Loads the host's appointments from their relays and keeps them for optimistic updates. */
 export function useHostAppointments(pubkey: string | undefined, relays?: string[]): HostAppointmentsState {
   const [appointments, setAppointments] = useState<HostAppointment[]>([]);
+  const [hostRelays, setHostRelays] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(Boolean(pubkey));
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +24,18 @@ export function useHostAppointments(pubkey: string | undefined, relays?: string[
     setIsLoading(true);
     setError(null);
     try {
-      setAppointments(await nostrPool.fetchHostAppointments(pubkey, { relays }));
+      // Guests publish bookings to the host's own NIP-65 relays, so those must be queried too.
+      let queryRelays = relays;
+      if (!queryRelays) {
+        try {
+          queryRelays = (await nostrPool.fetchHostRelays(pubkey)).all;
+        } catch (relayError) {
+          console.error('Failed to resolve host relays, using defaults', relayError);
+          queryRelays = [];
+        }
+      }
+      setHostRelays(queryRelays);
+      setAppointments(await nostrPool.fetchHostAppointments(pubkey, { relays: queryRelays }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -33,5 +47,5 @@ export function useHostAppointments(pubkey: string | undefined, relays?: string[
     void reload();
   }, [reload]);
 
-  return { appointments, setAppointments, isLoading, error, reload };
+  return { appointments, setAppointments, isLoading, error, reload, hostRelays };
 }

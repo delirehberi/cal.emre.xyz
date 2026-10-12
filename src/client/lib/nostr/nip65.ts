@@ -56,24 +56,73 @@ export function filterHealthyRelays(relays: string[]): string[] {
   return healthy;
 }
 
+export type RelaySource = 'host' | 'creator' | 'attendee' | 'extra' | 'default';
+
+export interface RelaySourceGroup {
+  source: RelaySource;
+  relays: string[];
+}
+
+export interface PublishTarget {
+  url: string;
+  sources: RelaySource[];
+}
+
+/** Upper bound on relays an event is fanned out to, keeping publish latency and traffic bounded. */
+export const MAX_PUBLISH_RELAYS = 12;
+
 /**
- * Constructs a cache relay URL bundling upstream relay endpoints for aggregated querying.
- * e.g. wss://cache.nostr.org.tr?relays=wss://relay.damus.io,wss://nos.lol,wss://relay.primal.net
+ * Merges relay groups into a deduplicated, capped publish target list.
+ * Groups are consumed in the given order, so earlier groups win when the cap is reached.
+ * Every group that references a relay is recorded on that target, even if it was first added by another group.
  */
-export function buildCacheRelayUrl(upstreamRelays: string[], cacheRelayBase?: string): string {
-  const base = (cacheRelayBase || '').trim();
-  if (!base) {
-    return '';
+export function buildPublishTargets(
+  groups: RelaySourceGroup[],
+  maxRelays: number = MAX_PUBLISH_RELAYS
+): PublishTarget[] {
+  const targets = new Map<string, PublishTarget>();
+
+  for (const group of groups) {
+    for (const relay of filterHealthyRelays(group.relays)) {
+      const existing = targets.get(relay);
+      if (existing) {
+        if (!existing.sources.includes(group.source)) {
+          existing.sources.push(group.source);
+        }
+        continue;
+      }
+      if (targets.size >= maxRelays) {
+        continue;
+      }
+      targets.set(relay, { url: relay, sources: [group.source] });
+    }
   }
 
-  const healthyRelays = filterHealthyRelays(upstreamRelays);
-  const cleanBase = base.replace(/\/+$/, '');
+  return Array.from(targets.values());
+}
 
-  if (healthyRelays.length === 0) {
-    return cleanBase;
+/** Number of relay hints embedded in a shared naddr. */
+export const MAX_RELAY_HINTS = 3;
+
+/**
+ * Picks relay hints for an naddr: one relay per distinct source first (host, creator, ...),
+ * so a viewer can find the event on the host's or the creator's relays, then fills with remaining targets.
+ */
+export function pickRelayHints(targets: PublishTarget[], maxHints: number = MAX_RELAY_HINTS): string[] {
+  const hints: string[] = [];
+  const coveredSources = new Set<RelaySource>();
+
+  for (const target of targets) {
+    if (hints.length >= maxHints) break;
+    if (target.sources.every((source) => coveredSources.has(source))) continue;
+    hints.push(target.url);
+    target.sources.forEach((source) => coveredSources.add(source));
   }
-
-  return `${cleanBase}?relays=${healthyRelays.join(',')}`;
+  for (const target of targets) {
+    if (hints.length >= maxHints) break;
+    if (!hints.includes(target.url)) hints.push(target.url);
+  }
+  return hints;
 }
 
 /**
