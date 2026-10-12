@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from '../../i18n';
+import { APP_CONFIG } from '../../../config';
 
-const GITHUB_URL = 'https://github.com/delirehberi/cal.emre.xyz';
+const GITHUB_URL = APP_CONFIG.repoUrl;
 const NIP52_URL = 'https://nostrhub.io/nip/52';
 const NOSTR_ORG_TR_URL = 'https://nostr.org.tr';
 

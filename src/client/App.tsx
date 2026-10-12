@@ -6,6 +6,7 @@ import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { BookingPage } from './pages/BookingPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { AboutPage } from './pages/AboutPage';
 import { APP_CONFIG } from '../config';
 import { parseRoute, useHashPath } from './lib/router';
 
@@ -19,6 +20,8 @@ export const MainLayout: React.FC = () => {
       <main className="flex-1">
         {route.name === 'dashboard' ? (
           <DashboardPage />
+        ) : route.name === 'about' ? (
+          <AboutPage />
         ) : (
           <BookingPage
             identifier={(route.name === 'booking' && route.identifier) || APP_CONFIG.defaultHostNip05}

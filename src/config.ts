@@ -8,6 +8,9 @@ export const APP_CONFIG = {
   description: 'Decentralized Nostr NIP-52 Calendar & Appointment System',
   supportEmail: 'z@emre.xyz',
   adminEmail: 'z@emre.xyz',
+  repoUrl: 'https://github.com/delirehberi/cal.emre.xyz',
+  /** Lightning address that receives support for the project. */
+  lightningAddress: 'delirehberi@emre.xyz',
   defaultHostNip05: 'delirehberi@emre.xyz',
   defaultHostPubkey: '46f3c7bb33cc3019049b76dc89dbb96e34c247bdda68b6ad8632682793ff8a1a',
   defaultHostPicture: 'https://emre.xyz/delirehberi.png',

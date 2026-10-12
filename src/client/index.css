@@ -150,6 +150,16 @@
   --text-display-l: 44px;
   --text-display-l--line-height: 1.19;
   --text-display-l--letter-spacing: -0.02em;
+  --text-lead-l: 19px;
+  --text-lead-l--line-height: 29px;
+  --text-prose: 16px;
+  --text-prose--line-height: 25px;
+  --text-section: 30px;
+  --text-section--line-height: 1.1;
+  --text-section--letter-spacing: -0.02em;
+  --text-cta: 28px;
+  --text-cta--line-height: 1.2;
+  --text-cta--letter-spacing: -0.02em;
   --text-display-xs: 34px;
   --text-display-xs--line-height: 1.19;
   --text-display-xs--letter-spacing: -0.03em;

@@ -271,6 +271,58 @@ export interface TranslationDictionary {
       attendeeEmail: string;
     };
   };
+  about: {
+    eyebrowOpenSource: string;
+    eyebrowSelfHost: string;
+    titleLine1: string;
+    titleLine2: string;
+    lead: string;
+    ctaGithub: string;
+    ctaOwnPage: string;
+    example: {
+      eyebrow: string;
+      title: string;
+      nip05: string;
+      npub: string;
+      noAccount: string;
+      noMiddleman: string;
+      dataOnRelays: string;
+    };
+    pillars: {
+      openSource: { title: string; text: string };
+      ownKey: { title: string; text: string };
+      selfHosted: { title: string; text: string };
+    };
+    steps: {
+      eyebrow: string;
+      title: string;
+      titleShort: string;
+      one: { title: string; text: string };
+      two: { title: string; text: string };
+      three: { title: string; text: string };
+    };
+    selfHost: {
+      eyebrow: string;
+      titleLine1: string;
+      titleLine2: string;
+      titleShort: string;
+      text: string;
+      repoLabel: string;
+      codeLabel: string;
+      commentFill: string;
+      commentDeploy: string;
+      copy: string;
+      copied: string;
+    };
+    contribute: {
+      title: string;
+      text: string;
+      issues: string;
+      star: string;
+      support: string;
+      supportLabel: string;
+    };
+  };
   footer: {
     nostrBadge: string;
     linksLabel: string;
